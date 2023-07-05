@@ -2,42 +2,51 @@
 
 #define WIN_WID 1000
 #define WIN_HIG 600
-#define curX00 180							//µÚÒ»ĞĞµÚÒ»ÁĞ²İÆº¿éµÄ×óÉÏ½ÇÎ»ÖÃµÄxÖµ£¨¼õÈ¥120£©£¨Ô­256£©
-#define curY00 95							//µÚÒ»ĞĞµÚÒ»ÁĞ²İÆº¿éµÄ×óÉÏ½ÇÎ»ÖÃµÄyÖµ
-#define cur_Height 100						//Ã¿Ò»¸ö²İÆº¿éµÄxµÄ³¤¶È
-#define cur_Width 81					    //Ã¿Ò»¸ö²İÆº¿éµÄyµÄ³¤¶È
-#define zmNum 10                            //½©Ê¬ÊıÁ¿
+#define curX00 180							//ç¬¬ä¸€è¡Œç¬¬ä¸€åˆ—è‰åªå—çš„å·¦ä¸Šè§’ä½ç½®çš„xå€¼ï¼ˆå‡å»120ï¼‰ï¼ˆåŸ256ï¼‰
+#define curY00 95							//ç¬¬ä¸€è¡Œç¬¬ä¸€åˆ—è‰åªå—çš„å·¦ä¸Šè§’ä½ç½®çš„yå€¼
+#define cur_Height 100						//æ¯ä¸€ä¸ªè‰åªå—çš„xçš„é•¿åº¦
+#define cur_Width 81					    //æ¯ä¸€ä¸ªè‰åªå—çš„yçš„é•¿åº¦
+#define zmNum 10                            //åƒµå°¸æ•°é‡
 
-enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb,CardCount };
-IMAGE* Plants[CardCount][20];	//Ö²ÎïÍ¼Æ¬
-int CardNums[CardCount] = { 0 };	//Ö²ÎïÍ¼Æ¬ÊıÁ¿
-bool judgePlant = false;		//ÅĞ¶ÏÊÇ·ñ¼ñÆğÖ²Îï
-int curX, curY;					//µ±Ç°Ö²ÎïÒÆ¶¯¹ı³ÌÖĞµÄÎ»ÖÃ
-bool fileExist(char* name);		//ÅĞ¶ÏÎÄ¼şÊÇ·ñ´æÔÚ
-int index = -1;					//µ±Ç°Ö²ÎïË÷ÒıÖµ
-IMAGE back_ground_img;			//ÓÎÏ·±³¾°Í¼Æ¬
-IMAGE bar_img;					//Ö²Îï¿¨²ÛÍ¼Æ¬
-IMAGE card_img[CardCount];		//Ö²Îï¿¨Æ¬Í¼Æ¬
-IMAGE sun_img[29];				//Ñô¹âÍ¼Æ¬
-//Ö²Îï
+enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb, CardCount };
+IMAGE* Plants[CardCount][20];	//æ¤ç‰©å›¾ç‰‡
+int CardNums[CardCount] = { 0 };	//æ¤ç‰©å›¾ç‰‡æ•°é‡
+bool judgePlant = false;		//åˆ¤æ–­æ˜¯å¦æ¡èµ·æ¤ç‰©
+int curX, curY;					//å½“å‰æ¤ç‰©ç§»åŠ¨è¿‡ç¨‹ä¸­çš„ä½ç½®
+bool fileExist(char* name);		//åˆ¤æ–­æ–‡ä»¶æ˜¯å¦å­˜åœ¨
+int index = -1;					//å½“å‰æ¤ç‰©ç´¢å¼•å€¼
+IMAGE back_ground_img;			//æ¸¸æˆèƒŒæ™¯å›¾ç‰‡
+IMAGE bar_img;					//æ¤ç‰©å¡æ§½å›¾ç‰‡
+IMAGE card_img[CardCount];		//æ¤ç‰©å¡ç‰‡å›¾ç‰‡
+IMAGE sun_img[29];				//é˜³å…‰å›¾ç‰‡
+
+//æ¤ç‰©
 struct plant {
-	int type;					//Ö²ÎïÖÖÀà£¬0£ºÎŞ
-	int frame;					//µ±Ç°ÊÇµÚ¼¸Ö¡
-};
-//È«µØÍ¼Ö²ÎïÊı×é
-struct plant AllMap[5][9] = { 0 };
-int timer = 0;					//¸üĞÂÊ±¼ä¼ä¸ô
-//Ñô¹â
-struct SunShine {
-	int x, y;					//µ±Ç°×ø±ê
-	int frame;					//Ñô¹âÖ¡ĞòºÅ
-	int endY;					//Æ®ÂäµÄÄ¿±êy×ø±ê
-	bool used;					//ÊÇ·ñ±»Ê¹ÓÃ
-	int timer;					//Ñô¹â¼ÆÊ±Æ÷
+	int type;					//æ¤ç‰©ç§ç±»ï¼Œ0ï¼šæ— 
+	int frame;					//å½“å‰æ˜¯ç¬¬å‡ å¸§
 };
 
-//Ñô¹â³Ø
+
+
+//å…¨åœ°å›¾æ¤ç‰©æ•°ç»„
+struct plant AllMap[5][9] = { 0 };
+int timer = 0;					//æ›´æ–°æ—¶é—´é—´éš”
+
+//é˜³å…‰
+struct SunShine {
+	int x, y;					//å½“å‰åæ ‡
+	int frame;					//é˜³å…‰å¸§åºå·
+	int endY;					//é£˜è½çš„ç›®æ ‡yåæ ‡
+	bool used;					//æ˜¯å¦è¢«ä½¿ç”¨
+	int timer;					//é˜³å…‰è®¡æ—¶å™¨
+	float xoff;					//xåç§»é‡
+	float yoff;					//yåç§»é‡
+};
+
+//é˜³å…‰æ± 
 struct SunShine balls[10];
+
+int SunShineValue = 50;
 
 bool fileExist(char* name) {
 	FILE* fp = fopen(name, "r");
@@ -52,25 +61,26 @@ bool fileExist(char* name) {
 
 struct zm
 {
-	int x, y;//¸Ã½©Ê¬ËùÔÚµÄ×ø±ê
-	int frame;//¸Ã½©Ê¬µ±Ç°ÏÔÊ¾µÄÍ¼Æ¬Ö¡Î»ÖÃÊı
-	bool used;//ÊÇ·ñ³ö³¡
-	int speed;//ÒÆ¶¯ËÙ¶È
+	int x, y;//è¯¥åƒµå°¸æ‰€åœ¨çš„åæ ‡
+	int frame;//è¯¥åƒµå°¸å½“å‰æ˜¾ç¤ºçš„å›¾ç‰‡å¸§ä½ç½®æ•°
+	bool used;//æ˜¯å¦å‡ºåœº
+	int speed;//ç§»åŠ¨é€Ÿåº¦
 };
-struct zm zms[zmNum];//½©Ê¬×ÜÊı£¨10¸ö
-IMAGE imgZM[22];//´¢´æ½©Ê¬Ã¿Ò»Ö¡¶¯»­µÄIMGÊı×é
+struct zm zms[zmNum];//åƒµå°¸æ€»æ•°ï¼ˆ10ä¸ª
+IMAGE imgZM[22];//å‚¨å­˜åƒµå°¸æ¯ä¸€å¸§åŠ¨ç”»çš„IMGæ•°ç»„
 
-
+//æ¸¸æˆå†…å®¹åˆå§‹åŒ–
 void InitGame() {
-	//¼ÓÔØÓÎÏ·±³¾°
+	//åŠ è½½æ¸¸æˆèƒŒæ™¯
 	loadimage(&back_ground_img, "res/map0.jpg");
-	//¼ÓÔØÖ²Îï¿¨²Û
+	//åŠ è½½æ¤ç‰©å¡æ§½
 	loadimage(&bar_img, "res/bar5.png");
 	char name[64];
 	memset(Plants, 0, sizeof(Plants));
 	memset(AllMap, 0, sizeof(AllMap));
 	memset(balls, 0, sizeof(balls));
-	//¼ÓÔØÖ²Îï¿¨Æ¬
+	SunShineValue = 150;
+	//åŠ è½½æ¤ç‰©å¡ç‰‡
 	for (int i = 0; i < CardCount; i++) {
 		sprintf_s(name, sizeof(name), "res/Cards/card_%d.png", i + 1);
 		loadimage(&card_img[i], name);
@@ -89,16 +99,16 @@ void InitGame() {
 	}
 
 
-	//¼ÓÔØÑô¹âÍ¼Æ¬
+	//åŠ è½½é˜³å…‰å›¾ç‰‡
 	for (int i = 0; i < 29; i++) {
 		sprintf_s(name, sizeof(name), "res/sunshine/%d.png", i + 1);
 		loadimage(&sun_img[i], name);
 	}
 
-	//Ëæ»úÖÖ×Ó
+	//éšæœºç§å­
 	srand(time(NULL));
 
-	//³õÊ¼»¯½©Ê¬
+	//åˆå§‹åŒ–åƒµå°¸
 	memset(zms, 0, sizeof(zms));
 	for (int i = 0; i < 22; i++) {
 		char name[64];
@@ -107,23 +117,34 @@ void InitGame() {
 	}
 
 
-	//´´½¨ÓÎÏ·´°¿Ú
+	//åˆ›å»ºæ¸¸æˆçª—å£
 	initgraph(WIN_WID, WIN_HIG, EX_SHOWCONSOLE);
+
+	//è®¾ç½®å­—ä½“
+	LOGFONT f;
+	gettextstyle(&f);
+	f.lfHeight = 30;
+	f.lfWeight = 25;
+	strcpy(f.lfFaceName, "Segoe UI Black");
+	f.lfQuality = ANTIALIASED_QUALITY;  //æŠ—é”¯é½¿
+	settextstyle(&f);
+	setbkmode(TRANSPARENT); //èƒŒæ™¯æ¨¡å¼
+	setcolor(BLACK);
 }
 
-//ÓÎÏ·±³¾°
+//æ¸¸æˆèƒŒæ™¯
 void PutBackGround() {
-	//±³¾°
+	//èƒŒæ™¯
 	putimage(0, 0, &back_ground_img);
-	//Ö²Îï¿¨²Û
+	//æ¤ç‰©å¡æ§½
 	putimagePNG(250, 0, &bar_img);
-	//Ö²Îï¿¨ÅÆ
+	//æ¤ç‰©å¡ç‰Œ
 	for (int i = 0; i < CardCount; i++) {
 		putimagePNG(338 + i * 64, 6, &card_img[i]);
 	}
 }
 
-//ÖÖÖ²ºóµÄÖ²Îï
+//ç§æ¤åçš„æ¤ç‰©
 void PutPlants() {
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 9; j++) {
@@ -138,7 +159,7 @@ void PutPlants() {
 	}
 }
 
-//ÍÏ¶¯¹ı³ÌÖĞµÄÖ²Îï
+//æ‹–åŠ¨è¿‡ç¨‹ä¸­çš„æ¤ç‰©
 void PutDrag() {
 	if (index >= 1) {
 		IMAGE* zhiwu = Plants[index - 1][0];
@@ -146,36 +167,45 @@ void PutDrag() {
 	}
 }
 
-//´ÓÌì¿ÕÆ®ÂäµÄÑô¹â
+//ä»å¤©ç©ºé£˜è½çš„é˜³å…‰
 void PutSunShine1() {
 	int ballnums = sizeof(balls) / sizeof(balls[0]);
 	for (int i = 0; i < ballnums; i++) {
-		if (balls[i].used) {
+		if (balls[i].used || balls[i].xoff != 0) {
 			int n = balls[i].frame;
 			putimagePNG(balls[i].x, balls[i].y, &sun_img[n]);
 		}
 	}
 }
 
+//é˜³å…‰å€¼
+void PutSunShineValue() {
+	char score[8];
+	sprintf_s(score, sizeof(score), "%d", SunShineValue);
+	outtextxy(curX00+100, curY00-28, score);
+}
 
-//ÓÎÏ·´°¿Ú
+//æ¸¸æˆçª—å£
 void UpdateWindow() {
-	//¿ªÊ¼»º³å
+	//å¼€å§‹ç¼“å†²
 	BeginBatchDraw();
 
-	//ÓÎÏ·±³¾°
+	//æ¸¸æˆèƒŒæ™¯
 	PutBackGround();
 
-	//ÖÖÖ²ºóµÄÖ²Îï
+	//ç§æ¤åçš„æ¤ç‰©
 	PutPlants();
 
-	//ÍÏ¶¯¹ı³ÌÖĞµÄÖ²Îï
+	//æ‹–åŠ¨è¿‡ç¨‹ä¸­çš„æ¤ç‰©
 	PutDrag();
 
-	//Ëæ»úÉú³ÉµÄÑô¹â
+	//éšæœºç”Ÿæˆçš„é˜³å…‰
 	PutSunShine1();
 
-	//äÖÈ¾½©Ê¬Í¼Æ¬
+	//é˜³å…‰å€¼
+	PutSunShineValue();
+
+	//æ¸²æŸ“åƒµå°¸å›¾ç‰‡
 	for (int i = 0; i < zmNum; i++) {
 		if (zms[i].used) {
 			IMAGE* img = &imgZM[zms[i].frame];
@@ -185,9 +215,9 @@ void UpdateWindow() {
 		}
 	}
 
-	//¸üĞÂ½©Ê¬Í¼Æ¬Ö¡Î»ÖÃ
+	//æ›´æ–°åƒµå°¸å›¾ç‰‡å¸§ä½ç½®
 	static int count2 = 0;
-	if (count2++ == 100) {//¶¯×÷½µËÙÆ÷£¬»úÖÆÏàµ±ÓÚcreateZMµ±ÖĞµÄcount
+	if (count2++ == 100) {//åŠ¨ä½œé™é€Ÿå™¨ï¼Œæœºåˆ¶ç›¸å½“äºcreateZMå½“ä¸­çš„count
 		count2 = 0;
 		for (int i = 0; i < zmNum; i++) {
 			if (zms[i].used) {
@@ -197,22 +227,70 @@ void UpdateWindow() {
 		}
 	}
 
-
-	//½áÊø»º³å
+	//ç»“æŸç¼“å†²
 	EndBatchDraw();
 }
 
-//µã»÷ÅĞ¶Ï
+//é€‰å–æ¤ç‰©
+void CatchPlant(ExMessage *msg) {
+		index = (msg->x - 338) / 64 + 1;
+		judgePlant = true;
+		curX = msg->x;
+		curY = msg->y;
+		PlaySound("res/audio/select.wav", NULL, SND_FILENAME | SND_ASYNC);
+}
+
+//ç§æ¤æ¤ç‰©
+void Planting(ExMessage *msg) {
+	if (msg->x >= curX00 && msg->x <= curX00 + cur_Width * 9 && msg->y >= curY00 && msg->y <= curY00 + cur_Height * 5) {
+		int row = (msg->y - curY00) / cur_Height;
+		int col = (msg->x - curX00) / cur_Width;
+
+		//ç§æ¤
+		if (AllMap[row][col].type == 0) {
+			AllMap[row][col] = {
+				index,
+				0
+			};
+			PlaySound("res/audio/plantdown.wav", NULL, SND_FILENAME | SND_ASYNC);
+		}
+	}
+	index = 0;
+	judgePlant = false;
+}
+
+//æ”¶é›†é˜³å…‰
+void CollectSunShine(ExMessage *msg) {
+	int ballnums = sizeof(balls) / sizeof(balls[0]);
+	for (int i = 0; i < ballnums; i++) {
+		if (balls[i].used) {
+			int nowX = balls[i].x;
+			int nowY = balls[i].y;
+			if (msg->x > nowX && msg->x < nowX + 79 && msg->y > nowY && msg->y < nowY + 79) {
+				PlaySound("res/audio/sunshine.wav", NULL, SND_FILENAME | SND_ASYNC);
+				//è®¾ç½®åç§»é‡
+				float destY = 0;
+				float destX = 262;
+				float angle = atan((nowY - destY) / (nowX - destX));
+				balls[i].xoff = 8 * cos(angle);
+				balls[i].yoff = 8 * sin(angle);
+				balls[i].used = false;
+			}
+		}
+	}
+}
+
+//ç‚¹å‡»åˆ¤æ–­
 void Click() {
 	ExMessage msg;
 	if (peekmessage(&msg)) {
-		//Ê×´Îµã»÷Ö²Îï¿¨Æ¬
+		//é¦–æ¬¡ç‚¹å‡»æ¤ç‰©å¡ç‰‡
 		if (msg.message == WM_LBUTTONDOWN && judgePlant == false) {
 			if (msg.x > 338 && msg.x < 338 + 64 * CardCount && msg.y>6 && msg.y < 96) {
-				index = (msg.x - 338) / 64 + 1;
-				judgePlant = true;
-				curX = msg.x;
-				curY = msg.y;
+				CatchPlant(&msg);
+			}
+			else {
+				CollectSunShine(&msg);
 			}
 		}
 		else if (msg.message == WM_MOUSEMOVE && judgePlant == true) {
@@ -220,26 +298,13 @@ void Click() {
 			curY = msg.y;
 		}
 		else if (msg.message == WM_LBUTTONDOWN && judgePlant == true) {
-			if (msg.x >= curX00 && msg.x <= curX00 + cur_Width * 9 && msg.y >= curY00 && msg.y <= curY00 + cur_Height * 5) {
-				int row = (msg.y - curY00) / cur_Height;
-				int col = (msg.x - curX00) / cur_Width;
-
-				//ÖÖÖ²
-				if (AllMap[row][col].type == 0) {
-					AllMap[row][col] = {
-						index,
-						0
-					};
-				}
-			}
-			index = 0;
-			judgePlant = false;
+			Planting(&msg);
 		}
 	}
 }
 
 
-//¸üĞÂÖ²Îï¶¯»­Ö¡
+//æ›´æ–°æ¤ç‰©åŠ¨ç”»å¸§
 void PlantSwing() {
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 9; j++) {
@@ -258,16 +323,16 @@ void PlantSwing() {
 	
 }
 
-//Ëæ»ú´´½¨Ñô¹âÊı¾İ
+//éšæœºåˆ›å»ºé˜³å…‰æ•°æ®
 void CreateSunshine() {
-	static int count = 0;		//¾²Ì¬±äÁ¿
+	static int count = 0;		//é™æ€å˜é‡
 	static int fre = 100;
 	count++;
 	if (count >= fre) {
 		fre = 100 + rand() % 100;
 		count = 0;
 
-		//´ÓÑô¹â³ØÖĞÈÎÈ¡Ò»¸ö¿ÉÒÔÊ¹ÓÃµÄÑô¹â
+		//ä»é˜³å…‰æ± ä¸­ä»»å–ä¸€ä¸ªå¯ä»¥ä½¿ç”¨çš„é˜³å…‰
 		int ballnums = sizeof(balls) / sizeof(balls[0]);
 
 		int i;
@@ -277,15 +342,16 @@ void CreateSunshine() {
 
 		balls[i].used = true;
 		balls[i].frame = 0;
-		balls[i].x = curX00 + (rand() % (9 * cur_Width));	//Ëæ»úÉú³ÉÑô¹âxÖá
-		balls[i].endY = curY00 + ((rand() % 5) * cur_Height);//Ëæ»úÉú³ÉÑô¹âµÄÖÕµãY×ø±ê
+		balls[i].x = curX00 + (rand() % (9 * cur_Width));	//éšæœºç”Ÿæˆé˜³å…‰xè½´
+		balls[i].endY = curY00 + ((rand() % 5) * cur_Height);//éšæœºç”Ÿæˆé˜³å…‰çš„ç»ˆç‚¹Yåæ ‡
 		balls[i].y = 60;
 		balls[i].timer = 0;
-		printf("%d\n", i);
+		balls[i].xoff = 0;
+		balls[i].yoff = 0;
 	}
 }
 
-//¸üĞÂÑô¹â×´Ì¬
+//æ›´æ–°é˜³å…‰çŠ¶æ€
 void UpdateSunshine() {
 	int ballnums = sizeof(balls) / sizeof(balls[0]);
 	for (int i = 0; i < ballnums; i++) {
@@ -305,18 +371,32 @@ void UpdateSunshine() {
 				balls[i].y += 2;
 			}
 		}
-	}
+		else if (balls[i].xoff != 0 && balls[i].yoff != 0) {
+			float destY = 0;
+			float destX = 262;
+			float angle = atan((balls[i].y - destY) / (balls[i].x - destX));
+			balls[i].xoff = 8 * cos(angle);
+			balls[i].yoff = 8 * sin(angle);
+			balls[i].x -= balls[i].xoff;
+			balls[i].y -= balls[i].yoff;
+			if (balls[i].y < 0 || balls[i].x < 262) {
+				balls[i].xoff = 0;
+				balls[i].yoff = 0;
+				SunShineValue += 25;
+			}
+		}
+	} 
 }
 
 
 void createZM() {
-	static int zmFre = 0;//´´½¨½©Ê¬µÄÖ¡¼ä¸ô£¬³õÊ¼200
-	static int count = 0;//ÓÎÏ·Ö¡¼ÆÊıÆ÷
-	if (count++ > zmFre) {//Ö¡¼ÆÊıÆ÷´óÓÚÖ¡¼ä¸ôÊ±²Å´´½¨½©Ê¬£¬·ñÔòÎŞ²Ù×÷
-		count = 0;//Ö¡¼ÆÊıÆ÷ÖÃÁã
-		zmFre = rand() % 300 + 200;//Ö¡¼ä¸ôËæ»úÖØÖÃ
+	static int zmFre = 0;//åˆ›å»ºåƒµå°¸çš„å¸§é—´éš”ï¼Œåˆå§‹200
+	static int count = 0;//æ¸¸æˆå¸§è®¡æ•°å™¨
+	if (count++ > zmFre) {//å¸§è®¡æ•°å™¨å¤§äºå¸§é—´éš”æ—¶æ‰åˆ›å»ºåƒµå°¸ï¼Œå¦åˆ™æ— æ“ä½œ
+		count = 0;//å¸§è®¡æ•°å™¨ç½®é›¶
+		zmFre = rand() % 300 + 200;//å¸§é—´éš”éšæœºé‡ç½®
 
-		//´´½¨½©Ê¬
+		//åˆ›å»ºåƒµå°¸
 		int i;
 		for (i = 0; i < zmNum && zms[i].used; i++);
 		if (i < zmNum) {
@@ -336,12 +416,12 @@ void updateZM() {
 	if (count > 2) {
 		count = 0;
 		for (int i = 0; i < zmNum; i++) {
-			//½©Ê¬Î»ÖÃ¸üĞÂ
+			//åƒµå°¸ä½ç½®æ›´æ–°
 			if (zms[i].used) {
 				zms[i].x -= zms[i].speed;
 				if (zms[i].x <= curX00)
 				{
-					//ÓÎÏ·Ê§°Ü
+					//æ¸¸æˆå¤±è´¥
 					MessageBox(NULL, "over", "over", 0);
 					exit(0);
 				}
@@ -351,35 +431,40 @@ void updateZM() {
 }
 
 
-//¸üĞÂÓÎÏ·ÄÚĞÅÏ¢
+//æ›´æ–°æ¸¸æˆå†…ä¿¡æ¯
 void UpdateGame() {
 	PlantSwing();
 	CreateSunshine();
 	UpdateSunshine();
 
-	createZM();//Ã¿Ò»Ö¡µ÷ÓÃÒ»´ÎµÄ·½·¨´´½¨½©Ê¬
-	updateZM();//Ã¿Ò»Ö¡Ë¢ĞÂÒ»´Î½©Ê¬
+	createZM();//æ¯ä¸€å¸§è°ƒç”¨ä¸€æ¬¡çš„æ–¹æ³•åˆ›å»ºåƒµå°¸
+	updateZM();//æ¯ä¸€å¸§åˆ·æ–°ä¸€æ¬¡åƒµå°¸
 }
 
-//¿ªÊ¼ÓÎÏ·
+//å¼€å§‹æ¸¸æˆ
 void GameStart() {
-	bool flag = false;
-	mciSendString("play res/audio/readysetplant.mp3", 0, 0, 0);
-	mciSendString("open res/audio/grasswalk.mp3 alias bg2", 0, 0, 0);
-	mciSendString("play bg2 repeat", 0, 0, 0);
-	mciSendString("setaudio bg2 volume to 300", 0, 0, 0);
-	while (true){
-		Click();
-		timer += getDelay();
-		if (timer > 40) {
-			flag = true;
-			timer = 0;
-		}
-		UpdateWindow();
-		if (flag) {
-			flag = false;
-			UpdateGame();
-		}
+	int just = 0;//åˆ¤æ–­å¼€å§‹æ¸¸æˆè¿˜æ˜¯é€€å‡ºï¼Œjust=1å¼€å§‹ï¼Œjuat=2é€€å‡º
+	startUI(&just);
+	if (just == 1) {
+		mciSendString("close bg", 0, 0, 0);
+		bool flag = false;
+		mciSendString("play res/audio/readysetplant.mp3", 0, 0, 0);
+		mciSendString("open res/audio/grasswalk.mp3 alias bg2", 0, 0, 0);
+		mciSendString("play bg2 repeat", 0, 0, 0);
+		mciSendString("setaudio bg2 volume to 300", 0, 0, 0);
+		while (true) {
+			Click();
+			timer += getDelay();
+			if (timer > 40) {
+				flag = true;
+				timer = 0;
+			}
+			UpdateWindow();
+			if (flag) {
+				flag = false;
+				UpdateGame();
+			}
 
+		}
 	}
 }
