@@ -1,8 +1,9 @@
 #pragma once
-#include "tools.h"
+#include "home_menu.h"
 #include <stdio.h>
 #include <time.h>
 #include <mmsystem.h>
+#include <math.h>
 #pragma comment(lib, "winmm.lib")
 
 
