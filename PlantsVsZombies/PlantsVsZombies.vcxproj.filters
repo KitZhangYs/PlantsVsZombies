@@ -39,7 +39,4 @@
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="C:\Program Files\MySQL\MySQL Server 8.0\bin\libssl-1_1-x64.dll" />
-  </ItemGroup>
 </Project>
