@@ -8,7 +8,8 @@
 #define cur_Width 81					    //每一个草坪块的y的长度
 
 enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb, CardCount };
-IMAGE* Plants[CardCount][20];
+IMAGE* Plants[CardCount][20];	//植物图片
+int CardNums[CardCount] = {0};	//植物图片数量
 bool judgePlant = false;		//判断是否捡起植物
 int curX, curY;					//当前植物移动过程中的位置
 bool fileExist(char* name);		//判断文件是否存在
@@ -23,6 +24,7 @@ struct plant {
 };
 //全地图植物数组
 struct plant AllMap[5][9] = {0};
+int timer = 0;					//更新时间间隔
 
 bool fileExist(char* name) {
 	FILE* fp = fopen(name, "r");
@@ -54,6 +56,7 @@ void InitGame() {
 			if (fileExist(name)) {
 				Plants[i][j] = new IMAGE;
 				loadimage(Plants[i][j], name);
+				CardNums[i]++;
 			}
 			else {
 				break;
@@ -138,10 +141,37 @@ void Click() {
 	}
 }
 
+
+void UpdateGame() {
+	for (int i = 0; i < 5; i++)	{
+		for (int j = 0; j < 9; j++) {
+			int n = AllMap[i][j].type - 1;
+			if (AllMap[i][j].type > 0) {
+				if (AllMap[i][j].frame < CardNums[n] - 1) {
+					AllMap[i][j].frame++;
+				}
+				else {
+					AllMap[i][j].frame = 0;
+				}
+			}
+		}
+	}
+}
+
 void GameStart() {
+	bool flag = false;
 	while (true){
 		Click();
+		timer += getDelay();
+		if (timer > 100) {
+			flag = true;
+			timer = 0;
+		}
 		UpdateWindow();
+		if (flag) {
+			flag = false;
+			UpdateGame();
+		}
 		
 	}
 }
