@@ -6,10 +6,11 @@
 #define curY00 95							//第一行第一列草坪块的左上角位置的y值
 #define cur_Height 100						//每一个草坪块的x的长度
 #define cur_Width 81					    //每一个草坪块的y的长度
+#define zmNum 10                            //僵尸数量
 
 enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb,CardCount };
 IMAGE* Plants[CardCount][20];	//植物图片
-int CardNums[CardCount] = {0};	//植物图片数量
+int CardNums[CardCount] = { 0 };	//植物图片数量
 bool judgePlant = false;		//判断是否捡起植物
 int curX, curY;					//当前植物移动过程中的位置
 bool fileExist(char* name);		//判断文件是否存在
@@ -24,7 +25,7 @@ struct plant {
 	int frame;					//当前是第几帧
 };
 //全地图植物数组
-struct plant AllMap[5][9] = {0};
+struct plant AllMap[5][9] = { 0 };
 int timer = 0;					//更新时间间隔
 //阳光
 struct SunShine {
@@ -49,6 +50,17 @@ bool fileExist(char* name) {
 	}
 }
 
+struct zm
+{
+	int x, y;//该僵尸所在的坐标
+	int frame;//该僵尸当前显示的图片帧位置数
+	bool used;//是否出场
+	int speed;//移动速度
+};
+struct zm zms[zmNum];//僵尸总数（10个
+IMAGE imgZM[22];//储存僵尸每一帧动画的IMG数组
+
+
 void InitGame() {
 	//加载游戏背景
 	loadimage(&back_ground_img, "res/map0.jpg");
@@ -64,7 +76,7 @@ void InitGame() {
 		loadimage(&card_img[i], name);
 
 		for (int j = 0; j < 20; j++) {
-			sprintf_s(name,sizeof(name),"res/Plants/%d/%d.png",i,j+1);
+			sprintf_s(name, sizeof(name), "res/Plants/%d/%d.png", i, j + 1);
 			if (fileExist(name)) {
 				Plants[i][j] = new IMAGE;
 				loadimage(Plants[i][j], name);
@@ -76,6 +88,7 @@ void InitGame() {
 		}
 	}
 
+
 	//加载阳光图片
 	for (int i = 0; i < 29; i++) {
 		sprintf_s(name, sizeof(name), "res/sunshine/%d.png", i + 1);
@@ -84,6 +97,15 @@ void InitGame() {
 
 	//随机种子
 	srand(time(NULL));
+
+	//初始化僵尸
+	memset(zms, 0, sizeof(zms));
+	for (int i = 0; i < 22; i++) {
+		char name[64];
+		sprintf_s(name, sizeof(name), "res/zm/0/%d.png", i + 1);
+		loadimage(&imgZM[i], name);
+	}
+
 
 	//创建游戏窗口
 	initgraph(WIN_WID, WIN_HIG, EX_SHOWCONSOLE);
@@ -153,6 +175,29 @@ void UpdateWindow() {
 	//随机生成的阳光
 	PutSunShine1();
 
+	//渲染僵尸图片
+	for (int i = 0; i < zmNum; i++) {
+		if (zms[i].used) {
+			IMAGE* img = &imgZM[zms[i].frame];
+			putimagePNG(zms[i].x,
+				zms[i].y - (img->getheight()),
+				img);
+		}
+	}
+
+	//更新僵尸图片帧位置
+	static int count2 = 0;
+	if (count2++ == 100) {//动作降速器，机制相当于createZM当中的count
+		count2 = 0;
+		for (int i = 0; i < zmNum; i++) {
+			if (zms[i].used) {
+				if (zms[i].frame++ == 21)
+					zms[i].frame = 0;
+			}
+		}
+	}
+
+
 	//结束缓冲
 	EndBatchDraw();
 }
@@ -178,7 +223,7 @@ void Click() {
 			if (msg.x >= curX00 && msg.x <= curX00 + cur_Width * 9 && msg.y >= curY00 && msg.y <= curY00 + cur_Height * 5) {
 				int row = (msg.y - curY00) / cur_Height;
 				int col = (msg.x - curX00) / cur_Width;
-				
+
 				//种植
 				if (AllMap[row][col].type == 0) {
 					AllMap[row][col] = {
@@ -192,6 +237,7 @@ void Click() {
 		}
 	}
 }
+
 
 //更新植物动画帧
 void PlantSwing() {
@@ -208,6 +254,8 @@ void PlantSwing() {
 			}
 		}
 	}
+
+	
 }
 
 //随机创建阳光数据
@@ -260,11 +308,57 @@ void UpdateSunshine() {
 	}
 }
 
+
+void createZM() {
+	static int zmFre = 0;//创建僵尸的帧间隔，初始200
+	static int count = 0;//游戏帧计数器
+	if (count++ > zmFre) {//帧计数器大于帧间隔时才创建僵尸，否则无操作
+		count = 0;//帧计数器置零
+		zmFre = rand() % 300 + 200;//帧间隔随机重置
+
+		//创建僵尸
+		int i;
+		for (i = 0; i < zmNum && zms[i].used; i++);
+		if (i < zmNum) {
+			zms[i].used = true;
+			zms[i].x = WIN_WID;
+			zms[i].y = curY00 + cur_Height * (1 + rand() % 5);
+			zms[i].speed = 1;
+		}
+
+	}
+
+}
+
+void updateZM() {
+	static int count = 0;
+	count++;
+	if (count > 2) {
+		count = 0;
+		for (int i = 0; i < zmNum; i++) {
+			//僵尸位置更新
+			if (zms[i].used) {
+				zms[i].x -= zms[i].speed;
+				if (zms[i].x <= curX00)
+				{
+					//游戏失败
+					MessageBox(NULL, "over", "over", 0);
+					exit(0);
+				}
+			}
+		}
+	}
+}
+
+
 //更新游戏内信息
 void UpdateGame() {
 	PlantSwing();
 	CreateSunshine();
 	UpdateSunshine();
+
+	createZM();//每一帧调用一次的方法创建僵尸
+	updateZM();//每一帧刷新一次僵尸
 }
 
 //开始游戏
@@ -286,6 +380,6 @@ void GameStart() {
 			flag = false;
 			UpdateGame();
 		}
-		
+
 	}
 }
