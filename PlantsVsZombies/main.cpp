@@ -4,11 +4,11 @@
 MYSQL mysql = { 0 };
 
 int main() {
-	InitMysql();
+	//InitMysql();
 	InitGame();
 	GameStart();
 
-	mysql_close(&mysql);
-	mysql_library_end();
+	//mysql_close(&mysql);
+	//mysql_library_end();
 	return 0;
 }
