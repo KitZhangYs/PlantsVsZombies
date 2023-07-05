@@ -4,7 +4,7 @@
 MYSQL mysql = { 0 };
 
 int main() {
-	InitMysql();
+	//InitMysql();
 	InitGame();
 	GameStart();
 
