@@ -2,6 +2,8 @@
 #include "tools.h"
 #include <stdio.h>
 #include <time.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 
 
