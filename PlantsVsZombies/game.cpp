@@ -83,12 +83,7 @@ void UpdateWindow() {
 		putimagePNG(338 + i * 64, 6, &card_img[i]);
 	}
 
-	//拖动过程中的植物
-	if (index >= 1) {
-		IMAGE* zhiwu = Plants[index-1][0];
-		putimagePNG(curX - zhiwu->getwidth()/2, curY - zhiwu->getheight()/2, zhiwu);
-	}
-
+	//种植后的植物
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 9; j++) {
 			if (AllMap[i][j].type > 0) {
@@ -99,6 +94,12 @@ void UpdateWindow() {
 				putimagePNG(x, y, Plants[plant_type][page]);
 			}
 		}
+	}
+
+	//拖动过程中的植物
+	if (index >= 1) {
+		IMAGE* zhiwu = Plants[index - 1][0];
+		putimagePNG(curX - zhiwu->getwidth() / 2, curY - zhiwu->getheight() / 2, zhiwu);
 	}
 
 	//结束缓冲
@@ -163,7 +164,7 @@ void GameStart() {
 	while (true){
 		Click();
 		timer += getDelay();
-		if (timer > 100) {
+		if (timer > 40) {
 			flag = true;
 			timer = 0;
 		}
