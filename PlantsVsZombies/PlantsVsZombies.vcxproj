@@ -128,12 +128,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game.cpp" />
+    <ClCompile Include="home_menu.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="my_sql.cpp" />
     <ClCompile Include="tools.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game.h" />
+    <ClInclude Include="home_menu.h" />
     <ClInclude Include="my_sql.h" />
     <ClInclude Include="tools.h" />
   </ItemGroup>
