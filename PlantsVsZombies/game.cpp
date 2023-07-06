@@ -7,7 +7,7 @@
 #define cur_Height 100						//每一个草坪块的x的长度
 #define cur_Width 81					    //每一个草坪块的y的长度
 #define zmNum 10                            //僵尸数量
-#define BULLET_MAX 100						//子弹池数目
+#define BULLET_MAX 10000						//子弹池数目
 
 enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb, CardCount };
 IMAGE* Plants[CardCount][20];	//植物图片
@@ -155,6 +155,10 @@ void InitGame() {
 	//加载铲子图片
 	loadimage(&shovel_img,"res/shovel.png");
 
+	//加载子弹图片
+	loadimage(&bul_img[0], "res/bullet_normal.png");
+	loadimage(&bul_img[1], "res/bullet_blast.png");
+
 	//创建游戏窗口
 	initgraph(WIN_WID, WIN_HIG, EX_SHOWCONSOLE);
 
@@ -201,7 +205,7 @@ void PutPlants() {
 
 //拖动过程中的植物
 void PutDrag() {
-	if (index >= 1) {
+	if (index >= 1 && judgePlant == true) {
 		IMAGE* zhiwu = Plants[index - 1][0];
 		putimagePNG(curX - zhiwu->getwidth() / 2, curY - zhiwu->getheight() / 2, zhiwu);
 	}
@@ -232,6 +236,7 @@ void PutShovel() {				//渲染未拖动的以及拖动过程中的铲子
 	else
 		putimagePNG(338 + 8*64 + 10, 10,&shovel_img );		//铲子70像素宽
 }
+
 
 //绘制僵尸并更新图片帧
 void drawZM() {
@@ -279,6 +284,21 @@ void drawZM() {
 
 				if (zms[i].frame++ == frameMax)
 					zms[i].frame = 0;//此时frame已经等于图片帧数，下一次渲染就会数组越界，所以置零
+			}
+		}
+	}
+}
+
+
+//子弹
+void PutBullet() {
+	for (int i = 0; i < BULLET_MAX; i++) {
+		if (bullets[i].x > 0) {
+			if (bullets[i].used) {
+				putimagePNG(bullets[i].x, bullets[i].y, &bul_img[0]);
+			}
+			else {
+				putimagePNG(bullets[i].x, bullets[i].y, &bul_img[1]);
 
 			}
 		}
@@ -292,6 +312,9 @@ void UpdateWindow() {
 
 	//游戏背景
 	PutBackGround();
+
+	//子弹图片
+	PutBullet();
 
 	//种植后的植物
 	PutPlants();
@@ -387,6 +410,28 @@ void CollectSunShine(ExMessage* msg) {
 	}
 }
 
+//拾取铲子
+void UseShovel(ExMessage* msg) {
+	judgeShovel = true;
+	curX = msg->x;
+	curY = msg->y;
+}
+
+//铲除植物
+void DeletePlant(ExMessage* msg) {
+	if (msg->x >= curX00 && msg->x <= curX00 + cur_Width * 9 && msg->y >= curY00 && msg->y <= curY00 + cur_Height * 5) {
+		int row = (msg->y - curY00) / cur_Height;
+		int col = (msg->x - curX00) / cur_Width;
+
+		//移除植物
+		if (AllMap[row][col].type != 0) {
+			AllMap[row][col].type = 0;
+			PlaySound("res/audio/plantdown.wav", NULL, SND_FILENAME | SND_ASYNC);
+		}
+	}
+	index = 0;
+	judgeShovel = false;
+}
 
 //点击判断
 void Click() {
@@ -398,14 +443,14 @@ void Click() {
 				CatchPlant(&msg);
 			}
 			else if (msg.x > 338 + 8 * 64 + 10 && msg.x < 338 + 8 * 64 + 80 && msg.y > 10 && msg.y < 80) {
-
+				UseShovel(&msg);
 			}
 			else {
 				CollectSunShine(&msg);
 			}
 		}
-		//植物卡牌拖动
-		else if (msg.message == WM_MOUSEMOVE && judgePlant == true && judgeShovel == false) {
+		//植物卡牌或铲子拖动
+		else if (msg.message == WM_MOUSEMOVE && (judgePlant == true || judgeShovel == true)) {
 			curX = msg.x;
 			curY = msg.y;
 		}
@@ -413,10 +458,17 @@ void Click() {
 		else if (msg.message == WM_LBUTTONDOWN && judgePlant == true && judgeShovel == false) {
 			Planting(&msg);
 		}
-		
+		//铲除植物
+		else if (msg.message == WM_LBUTTONDOWN && judgePlant == false && judgeShovel == true) {
+			DeletePlant(&msg);
+		}
+		//移除当前状态（不再拖动植物，不再拿取铲子）
+		else if (msg.message == WM_RBUTTONDOWN) {
+			judgePlant = false;
+			judgeShovel = false;
+		}
 	}
 }
-
 
 //更新植物动画帧
 void PlantSwing() {
@@ -490,7 +542,7 @@ void CreateSunshine() {
 
 		balls[i].used = true;
 		balls[i].frame = 0;
-		balls[i].x = curX00 + (rand() % (9 * cur_Width));	//随机生成阳光x轴
+		balls[i].x = curX00 + 84 + (rand() % (9 * cur_Width));	//随机生成阳光x轴
 		balls[i].endY = curY00 + ((rand() % 5) * cur_Height);//随机生成阳光的终点Y坐标
 		balls[i].y = 60;
 		balls[i].timer = 0;
@@ -523,8 +575,8 @@ void UpdateSunshine() {
 			float destY = 0;
 			float destX = 262;
 			float angle = atan((balls[i].y - destY) / (balls[i].x - destX));
-			balls[i].xoff = 8 * cos(angle);
-			balls[i].yoff = 8 * sin(angle);
+			balls[i].xoff = 16 * cos(angle);
+			balls[i].yoff = 16 * sin(angle);
 			balls[i].x -= balls[i].xoff;
 			if (balls[i].yoff < 0) {
 				balls[i].yoff = -balls[i].yoff;
@@ -534,6 +586,37 @@ void UpdateSunshine() {
 				balls[i].xoff = 0;
 				balls[i].yoff = 0;
 				SunShineValue += 25;
+			}
+		}
+	}
+}
+
+//豌豆射手发射子弹
+void FiringBullets() {
+	static int fre = 35;
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 9 ; j++) {
+			if (AllMap[i][j].type - 1 == PeaShooter) {
+				if (AllMap[i][j].timer >= fre) {
+					int k;
+					for (k = 0; k < BULLET_MAX && bullets[k].used; k++);
+					int x = curX00 + j * cur_Width;
+					int y = curY00 + i * cur_Height;
+					bullets[k].used = true;
+					bullets[k].row = i + 1;
+					bullets[k].x = x + 60;
+					bullets[k].y = y + 10;
+					bullets[k].dmg = 20;
+					AllMap[i][j].timer = 0;
+					int flag = rand() % 2;				//随机播放这两个音效中的一个
+					if (flag == 2)
+						PlaySound("res/audio/shootpea.wav", NULL, SND_FILENAME | SND_ASYNC);
+					else
+						PlaySound("res/audio/shootpea2.wav", NULL, SND_FILENAME | SND_ASYNC);
+				}
+				else {
+					AllMap[i][j].timer++;
+				}
 			}
 		}
 	}
@@ -640,13 +723,28 @@ void updateZM() {
 	}
 }
 
+//更新子弹状态
+void UpdateBullet() {
+	for (int i = 0; i < BULLET_MAX; i++) {
+		if (bullets[i].used) {
+			bullets[i].x += 4;
+			if (bullets[i].x >= 1000) {
+				bullets[i].x = 0;
+				bullets[i].y = 0;
+				bullets[i].used = false;
+			}
+		}
+	}
+}
 
 //更新游戏内信息
 void UpdateGame() {
 	PlantSwing();
-	//CreateSunshine();
+	CreateSunshine();
 	SunFlowerSunshine();
 	UpdateSunshine();
+	UpdateBullet();
+	FiringBullets();
 
 	createZM();//每一帧调用一次的方法创建僵尸
 	updateZM();//每一帧刷新一次僵尸
@@ -661,8 +759,8 @@ void GameStart() {
 		bool flag = false;
 		mciSendString("play res/audio/readysetplant.mp3", 0, 0, 0);
 		mciSendString("open res/audio/grasswalk.mp3 alias bg2", 0, 0, 0);
-		mciSendString("play bg2 repeat", 0, 0, 0);
-		mciSendString("setaudio bg2 volume to 300", 0, 0, 0);
+		//mciSendString("play bg2 repeat", 0, 0, 0);
+		//mciSendString("setaudio bg2 volume to 300", 0, 0, 0);
 		while (true) {
 			Click();
 			timer += getDelay();
