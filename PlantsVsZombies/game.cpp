@@ -9,7 +9,7 @@
 #define zmNum 10                            //僵尸数量
 #define BULLET_MAX 500						//子弹池数目
 
-enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb, CardCount };
+enum { PeaShooter, SunFlower, WallNut, PotatoMine, CardCount };
 IMAGE* Plants[CardCount][20];	//植物图片
 int CardNums[CardCount] = { 0 };	//植物图片数量
 bool judgePlant = false;		//判断是否捡起植物
@@ -24,8 +24,14 @@ IMAGE sun_img[29];				//阳光图片
 IMAGE shovel_img;				//铲子图片
 IMAGE shovel_slot_img;			//铲子槽位图片
 IMAGE bul_img[2];				//子弹图片
+IMAGE grey_card_img[CardCount]; //灰色植物卡牌
+IMAGE cd_card_img[CardCount];	//cd中植物卡牌
 int zm_nums[5];					//每行僵尸数量
 int bullet_nums[5];				//每行子弹数
+bool dis_afford[CardCount];		//是否买得起该植物
+int cd[CardCount];				//卡牌CD
+int plant_value[CardCount] = {100,50,50,25};		//植物价格
+int cd_num[CardCount] = { 300,300,300,300 };		//植物cd
 
 //植物
 struct plant {
@@ -104,11 +110,16 @@ void InitGame() {
 	memset(balls, 0, sizeof(balls));		//初始化阳光池
 	memset(zm_nums,0,sizeof(zm_nums)) ;		//初始化僵尸数量
 	memset(bullets, 0, sizeof(bullets));	//初始化子弹池
-	SunShineValue = 150;
+	memset(cd, 0, sizeof(cd));				//初始化卡牌CD
+	SunShineValue = 0;
 	//加载植物卡片
 	for (int i = 0; i < CardCount; i++) {
 		sprintf_s(name, sizeof(name), "res/Cards/card_%d.png", i + 1);
 		loadimage(&card_img[i], name);
+		sprintf_s(name, sizeof(name), "res/Cards_Black/card_%d.png", i + 1);
+		loadimage(&grey_card_img[i], name);
+		sprintf_s(name, sizeof(name), "res/Cards_CD/card_%d.png", i + 1);
+		loadimage(&cd_card_img[i], name);
 
 		for (int j = 0; j < 20; j++) {
 			sprintf_s(name, sizeof(name), "res/Plants/%d/%d.png", i, j + 1);
@@ -175,6 +186,21 @@ void InitGame() {
 	setcolor(BLACK);
 }
 
+//植物卡牌图片
+void PutPlantCard() {
+	for (int i = 0; i < CardCount; i++) {
+		if (cd[i]) {
+			putimagePNG(338 + i * 64, 6, &cd_card_img[i]);
+		}
+		else if (dis_afford[i]) {
+			putimagePNG(338 + i * 64, 6, &grey_card_img[i]);
+		}
+		else {
+			putimagePNG(338 + i * 64, 6, &card_img[i]);
+		}
+	}
+}
+
 //游戏背景
 void PutBackGround() {
 	//背景
@@ -182,9 +208,7 @@ void PutBackGround() {
 	//植物卡槽
 	putimagePNG(250, 0, &bar_img);
 	//植物卡牌
-	for (int i = 0; i < CardCount; i++) {
-		putimagePNG(338 + i * 64, 6, &card_img[i]);
-	}
+	PutPlantCard();
 	//铲子槽位
 	putimagePNG(338 + 8 * 64 + 10,10,&shovel_slot_img);
 }
@@ -346,10 +370,15 @@ void UpdateWindow() {
 //选取植物
 void CatchPlant(ExMessage* msg) {
 	index = (msg->x - 338) / 64 + 1;
-	judgePlant = true;
-	curX = msg->x;
-	curY = msg->y;
-	PlaySound("res/audio/select.wav", NULL, SND_FILENAME | SND_ASYNC);
+	if (SunShineValue >= plant_value[index - 1] && !cd[index - 1]) {
+		judgePlant = true;
+		curX = msg->x;
+		curY = msg->y;
+		PlaySound("res/audio/select.wav", NULL, SND_FILENAME | SND_ASYNC);
+	}
+	else {
+		PlaySound("res/audio/cannotselect.wav", NULL, SND_FILENAME | SND_ASYNC);
+	}
 }
 
 //初始化植物
@@ -388,6 +417,8 @@ void Planting(ExMessage* msg) {
 		if (AllMap[row][col].type == 0) {
 			InitPlant(row, col, index);
 			PlaySound("res/audio/plantdown.wav", NULL, SND_FILENAME | SND_ASYNC);
+			SunShineValue -= plant_value[index - 1];
+			cd[index - 1] = cd_num[index - 1];
 		}
 	}
 	index = 0;
@@ -746,6 +777,31 @@ void UpdateBullet() {
 	}
 }
 
+//更新植物卡牌状态
+void UpdateCard() {
+	//是否买得起
+	if (SunShineValue >= 100) {
+		memset(dis_afford, 0, sizeof(dis_afford));
+	}
+	else if (SunShineValue >= 50) {
+		memset(dis_afford, 0, sizeof(dis_afford));
+		dis_afford[PeaShooter] = true;
+	}
+	else if (SunShineValue >= 25) {
+		memset(dis_afford, true, sizeof(dis_afford));
+		dis_afford[PotatoMine] = false;
+	}
+	else {
+		memset(dis_afford, true, sizeof(dis_afford));
+	}
+	
+	for (int i = 0; i < CardCount; i++) {
+		if (cd[i]) {
+			cd[i]--;
+		}
+	}
+}
+
 //更新游戏内信息
 void UpdateGame() {
 	PlantSwing();
@@ -754,6 +810,7 @@ void UpdateGame() {
 	UpdateSunshine();
 	UpdateBullet();
 	FiringBullets();
+	UpdateCard();
 
 	createZM();//每一帧调用一次的方法创建僵尸
 	updateZM();//每一帧刷新一次僵尸
