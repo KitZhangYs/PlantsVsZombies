@@ -7,7 +7,7 @@
 #define cur_Height 100						//每一个草坪块的x的长度
 #define cur_Width 81					    //每一个草坪块的y的长度
 #define zmNum 10                            //僵尸数量
-#define BULLET_MAX 10000						//子弹池数目
+#define BULLET_MAX 500						//子弹池数目
 
 enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb, CardCount };
 IMAGE* Plants[CardCount][20];	//植物图片
@@ -23,8 +23,9 @@ IMAGE card_img[CardCount];		//植物卡片图片
 IMAGE sun_img[29];				//阳光图片
 IMAGE shovel_img;				//铲子图片
 IMAGE shovel_slot_img;			//铲子槽位图片
-IMAGE bul_img[2];					//子弹图片
+IMAGE bul_img[2];				//子弹图片
 int zm_nums[5];					//每行僵尸数量
+int bullet_nums[5];				//每行子弹数
 
 //植物
 struct plant {
@@ -299,7 +300,11 @@ void PutBullet() {
 			}
 			else {
 				putimagePNG(bullets[i].x, bullets[i].y, &bul_img[1]);
-
+				bullet_nums[bullets[i].row - 1]--;
+				bullets[i].x = 0;
+				bullets[i].y = 0;
+				bullets[i].row = 0;
+				bullets[i].dmg = 0;
 			}
 		}
 	}
@@ -604,6 +609,8 @@ void FiringBullets() {
 					int y = curY00 + i * cur_Height;
 					bullets[k].used = true;
 					bullets[k].row = i + 1;
+					bullet_nums[i] ++;
+					printf("%d   %d\n", i,bullet_nums[i]);
 					bullets[k].x = x + 60;
 					bullets[k].y = y + 10;
 					bullets[k].dmg = 20;
@@ -731,6 +738,8 @@ void UpdateBullet() {
 			if (bullets[i].x >= 1000) {
 				bullets[i].x = 0;
 				bullets[i].y = 0;
+				bullet_nums[bullets[i].row - 1]--;
+				bullets[i].row = 0;
 				bullets[i].used = false;
 			}
 		}
