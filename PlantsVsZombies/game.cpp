@@ -355,16 +355,16 @@ void InitPlant(int row, int col, int type) {
 	switch (type - 1)
 	{
 	case PeaShooter:
-		p_hp = 300;
+		p_hp = 200;
 		break;
 	case SunFlower:
-		p_hp = 300;
+		p_hp = 200;
 		break;
 	case WallNut:
-		p_hp = 4000;
+		p_hp = 3000;
 		break;
 	case PotatoMine:
-		p_hp = 300;
+		p_hp = 200;
 		break;
 	default:
 		break;
