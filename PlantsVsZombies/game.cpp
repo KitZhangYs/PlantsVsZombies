@@ -2,7 +2,7 @@
 
 #define WIN_WID 1000
 #define WIN_HIG 600
-#define curX00 180							//第一行第一列草坪块的左上角位置的x值（减去120）（原256）
+#define curX00 181							//第一行第一列草坪块的左上角位置的x值（减去120）（原256）
 #define curY00 95							//第一行第一列草坪块的左上角位置的y值
 #define cur_Height 100						//每一个草坪块的x的长度
 #define cur_Width 81					    //每一个草坪块的y的长度
@@ -24,6 +24,8 @@ IMAGE sun_img[29];				//阳光图片
 struct plant {
 	int type;					//植物种类，0：无
 	int frame;					//当前是第几帧
+	int timer;					//植物功能冷却时间（向日葵生产阳光、豌豆发射子弹等）
+	int hp;						//植物生命值
 };
 
 
@@ -44,7 +46,7 @@ struct SunShine {
 };
 
 //阳光池
-struct SunShine balls[10];
+struct SunShine balls[100];
 
 int SunShineValue = 50;
 
@@ -182,7 +184,7 @@ void PutSunShine1() {
 void PutSunShineValue() {
 	char score[8];
 	sprintf_s(score, sizeof(score), "%d", SunShineValue);
-	outtextxy(curX00+100, curY00-28, score);
+	outtextxy(curX00 + 100, curY00 - 28, score);
 }
 
 //游戏窗口
@@ -232,26 +234,49 @@ void UpdateWindow() {
 }
 
 //选取植物
-void CatchPlant(ExMessage *msg) {
-		index = (msg->x - 338) / 64 + 1;
-		judgePlant = true;
-		curX = msg->x;
-		curY = msg->y;
-		PlaySound("res/audio/select.wav", NULL, SND_FILENAME | SND_ASYNC);
+void CatchPlant(ExMessage* msg) {
+	index = (msg->x - 338) / 64 + 1;
+	judgePlant = true;
+	curX = msg->x;
+	curY = msg->y;
+	PlaySound("res/audio/select.wav", NULL, SND_FILENAME | SND_ASYNC);
+}
+
+//初始化植物
+void InitPlant(int row, int col, int type) {
+	AllMap[row][col].type = type;
+	AllMap[row][col].frame = 0;
+	int p_hp = 0;
+	switch (type - 1)
+	{
+	case PeaShooter:
+		p_hp = 300;
+		break;
+	case SunFlower:
+		p_hp = 300;
+		break;
+	case WallNut:
+		p_hp = 4000;
+		break;
+	case PotatoMine:
+		p_hp = 300;
+		break;
+	default:
+		break;
+	}
+	AllMap[row][col].hp = p_hp;
+	AllMap[row][col].timer = 0;
 }
 
 //种植植物
-void Planting(ExMessage *msg) {
+void Planting(ExMessage* msg) {
 	if (msg->x >= curX00 && msg->x <= curX00 + cur_Width * 9 && msg->y >= curY00 && msg->y <= curY00 + cur_Height * 5) {
 		int row = (msg->y - curY00) / cur_Height;
 		int col = (msg->x - curX00) / cur_Width;
 
 		//种植
 		if (AllMap[row][col].type == 0) {
-			AllMap[row][col] = {
-				index,
-				0
-			};
+			InitPlant(row, col, index);
 			PlaySound("res/audio/plantdown.wav", NULL, SND_FILENAME | SND_ASYNC);
 		}
 	}
@@ -260,7 +285,7 @@ void Planting(ExMessage *msg) {
 }
 
 //收集阳光
-void CollectSunShine(ExMessage *msg) {
+void CollectSunShine(ExMessage* msg) {
 	int ballnums = sizeof(balls) / sizeof(balls[0]);
 	for (int i = 0; i < ballnums; i++) {
 		if (balls[i].used) {
@@ -320,7 +345,41 @@ void PlantSwing() {
 		}
 	}
 
-	
+
+}
+
+//向日葵生产阳光
+void SunFlowerSunshine() {
+	static int fre = 100;
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 9; j++) {
+			if ((AllMap[i][j].type - 1) == SunFlower) {
+				if (AllMap[i][j].timer > fre) {
+					//从阳光池中任取一个可以使用的阳光
+					int ballnums = sizeof(balls) / sizeof(balls[0]);
+
+					int k;
+					for (k = 0; k < ballnums && balls[k].used; k++);
+					if (k >= ballnums)
+						return;
+
+					balls[k].used = true;
+					balls[k].frame = 0;
+					balls[k].x = curX00 + (j * cur_Width);	//x轴
+					balls[k].endY = curY00 + (i * cur_Height);//Y坐标
+					balls[k].y = balls[k].endY;
+					balls[k].timer = -240;
+					balls[k].xoff = 0;
+					balls[k].yoff = 0;
+					AllMap[i][j].timer = 0;
+					fre = 100 + rand() % 50;
+				}
+				else {
+					AllMap[i][j].timer++;
+				}
+			}
+		}
+	}
 }
 
 //随机创建阳光数据
@@ -371,13 +430,16 @@ void UpdateSunshine() {
 				balls[i].y += 2;
 			}
 		}
-		else if (balls[i].xoff != 0 && balls[i].yoff != 0) {
+		else if (balls[i].xoff != 0 || balls[i].yoff != 0) {
 			float destY = 0;
 			float destX = 262;
 			float angle = atan((balls[i].y - destY) / (balls[i].x - destX));
 			balls[i].xoff = 8 * cos(angle);
 			balls[i].yoff = 8 * sin(angle);
 			balls[i].x -= balls[i].xoff;
+			if (balls[i].yoff < 0) {
+				balls[i].yoff = -balls[i].yoff;
+			}
 			balls[i].y -= balls[i].yoff;
 			if (balls[i].y < 0 || balls[i].x < 262) {
 				balls[i].xoff = 0;
@@ -385,7 +447,7 @@ void UpdateSunshine() {
 				SunShineValue += 25;
 			}
 		}
-	} 
+	}
 }
 
 
@@ -434,7 +496,8 @@ void updateZM() {
 //更新游戏内信息
 void UpdateGame() {
 	PlantSwing();
-	CreateSunshine();
+	//CreateSunshine();
+	SunFlowerSunshine();
 	UpdateSunshine();
 
 	createZM();//每一帧调用一次的方法创建僵尸
