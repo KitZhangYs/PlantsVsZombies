@@ -189,6 +189,7 @@ void PutBackGround() {
 	putimagePNG(338 + 8 * 64 + 10,10,&shovel_slot_img);
 }
 
+
 //种植后的植物
 void PutPlants() {
 	for (int i = 0; i < 5; i++) {
@@ -310,14 +311,44 @@ void PutBullet() {
 	}
 }
 
+//暂停图标
+void Menu1(int just3) {
+	IMAGE imgBg2, imgMENU1, imgMENU2, imgMENU_exit1, imgMENU_exit2;
+	loadimage(&imgMENU1, "res/menu_1.png");
+	loadimage(&imgMENU2, "res/menu_2.png");
+	putimagePNG(888, 0, just3 ? &imgMENU1 : &imgMENU2);
+}
+
+//暂停菜单
+void pausepage(int* a) {
+	IMAGE imgBg3, back_game1, back_game2, begin_again1, begin_again2, main_menu1, main_menu2;
+	loadimage(&imgBg3, "res/pauseMenu.png");
+	loadimage(&back_game1, "res/back_game1.png");
+	loadimage(&back_game2, "res/back_game2.png");
+	loadimage(&begin_again1, "res/begin_again1.png");
+	loadimage(&begin_again2, "res/begin_again2.png");
+	loadimage(&main_menu1, "res/main_menu1.png");
+	loadimage(&main_menu2, "res/main_menu2.png");
+
+	putimagePNG(325, 80, &imgBg3);
+	putimagePNG(417, 355, a[0] ? &begin_again2 : &begin_again1);
+	putimagePNG(417, 405, a[1] ? &main_menu2 : &main_menu1);
+	putimagePNG(370, 478, a[2] ? &back_game1 : &back_game2);
+}
+
+
 //游戏窗口
-void UpdateWindow() {
+void UpdateWindow(int* just2, int* just3, int* a) {
 	//开始缓冲
 	BeginBatchDraw();
+
 
 	//游戏背景
 	PutBackGround();
 
+	//暂停图标
+	Menu1(*just3);
+  
 	//子弹图片
 	PutBullet();
 
@@ -338,6 +369,12 @@ void UpdateWindow() {
 
 	//渲染所有已生成的僵尸
 	drawZM();
+
+	//暂停菜单
+	if (*just2) {
+		pausepage(a);
+    }
+
 
 	//结束缓冲
 	EndBatchDraw();
@@ -761,8 +798,14 @@ void UpdateGame() {
 
 //开始游戏
 void GameStart() {
-	int just = 0;//判断开始游戏还是退出，just=1开始，juat=2退出
+	int just = 0;//判断开始游戏还是退出，just=1开始，just=2退出
+	int just2 = 0,just3=0,just4=0;//判断是否暂停
+	int a[3] = { 0,0,0 };//判断继续，重新开始或者返回菜单
+
+	start:
 	startUI(&just);
+    again:
+	just2 =just4= 0;
 	if (just == 1) {
 		mciSendString("close bg", 0, 0, 0);
 		bool flag = false;
@@ -777,12 +820,29 @@ void GameStart() {
 				flag = true;
 				timer = 0;
 			}
-			UpdateWindow();
-			if (flag) {
+			UpdateWindow(&just2,&just3,a);
+			menu(&just2, &just3);
+			if (just2) {
+					pause_page(&just4, a);
+					if (just4 == 1) { 
+						InitGame();
+						goto again;
+					}
+					else if (just4 == 2) {
+						InitGame();
+						goto start;
+						
+					}
+					else if (just4 == 3) {
+						just2 = 0;
+						just4 = 0;
+					}
+			}
+			if (flag&&just2==0) {
 				flag = false;
 				UpdateGame();
 			}
-
 		}
+
 	}
 }
