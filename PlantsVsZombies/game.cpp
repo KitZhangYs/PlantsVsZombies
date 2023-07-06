@@ -635,7 +635,7 @@ void createZM() {
 		for (i = 0; i < zmNum && zms[i].used; i++);
 		if (i < zmNum) {
 			zms[i].row = (rand() % 5) + 1;
-			zm_nums[zms[i].row]++;//标记此行僵尸数量，不等于0即令豌豆射手吐痰
+			zm_nums[zms[i].row - 1]++;//标记此行僵尸数量，不等于0即令豌豆射手吐痰
 			zms[i].type = rand()%3;//随机僵尸种类
 			zms[i].used = true;
 			zms[i].eating = false;
