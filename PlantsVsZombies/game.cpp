@@ -32,6 +32,7 @@ struct plant {
 	int frame;					//当前是第几帧
 	int timer;					//植物功能冷却时间（向日葵生产阳光、豌豆发射子弹等）
 	int hp;						//植物生命值
+	int beingEaten;				//正在被几个人撅
 };
 
 //全地图植物数组
@@ -78,13 +79,17 @@ bool fileExist(char* name) {
 
 struct zm
 {
+	int type;//僵尸种类 普通0 路障1 铁桶2
 	int x, y;//该僵尸所在的坐标
 	int frame;//该僵尸当前显示的图片帧位置数
 	bool used;//是否出场
 	int speed;//移动速度
+	bool eating;//是否在吃
+	int row;
 };
 struct zm zms[zmNum];//僵尸总数（10个
-IMAGE imgZM[22];//储存僵尸每一帧动画的IMG数组
+IMAGE imgZM[3][22];//储存三种僵尸每一帧动画的IMG数组
+IMAGE imgZMEating[3][21];//储存三种僵尸吃饭动画的IMG数组，最多21张
 
 //游戏内容初始化
 void InitGame() {
@@ -127,12 +132,22 @@ void InitGame() {
 	//随机种子
 	srand(time(NULL));
 
-	//初始化僵尸
+	//初始化僵尸行走图片
 	memset(zms, 0, sizeof(zms));
-	for (int i = 0; i < 22; i++) {
-		char name[64];
-		sprintf_s(name, sizeof(name), "res/zm/0/%d.png", i + 1);
-		loadimage(&imgZM[i], name);
+	for (int j = 0; j < 3; j++) {//每种僵尸行走图片都有22帧，所以可以直接二重循环
+		for (int i = 0; i < 22; i++) {
+			char name[64];
+			sprintf_s(name, sizeof(name), "res/zm/%d/%d.png",j, i + 1);
+			loadimage(&imgZM[j][i], name);
+		}
+	}
+	//初始化僵尸吃饭图片
+	for (int j = 0; j < 3; j++) {
+		for (int i = 0; i < 21; i++) {
+			char name[64];
+			sprintf_s(name, sizeof(name), "res/zm_eat/%d/%d.png", j, i + 1);
+			loadimage(&imgZMEating[j][i], name);
+		}
 	}
 
 	//加载铲子槽位图片
@@ -218,6 +233,58 @@ void PutShovel() {				//渲染未拖动的以及拖动过程中的铲子
 		putimagePNG(338 + 8*64 + 10, 10,&shovel_img );		//铲子70像素宽
 }
 
+//绘制僵尸并更新图片帧
+void drawZM() {
+
+	//渲染僵尸图片
+	for (int i = 0; i < zmNum; i++) {
+		if (zms[i].used) {
+			IMAGE* img;
+			if(zms[i].eating){		//根据僵尸是否在吃饭判断加载哪个数组的图片
+				img = &imgZMEating[zms[i].type][zms[i].frame];
+			}
+			else {
+				img = &imgZM[zms[i].type][zms[i].frame];
+			}
+			putimagePNG(zms[i].x,
+				zms[i].y - (img->getheight()),
+				img);				//统一渲染
+			
+		}
+	}
+
+	//更新僵尸图片帧位置
+	static int count2 = 0;//动作降速器，机制同理于createZM当中的count
+	if (count2++ == 100) {
+		count2 = 0;
+		for (int i = 0; i < zmNum; i++) {
+			if (zms[i].used) {
+				int frameMax;
+				if (!zms[i].eating) {//如果没在吃饭，判断僵尸种类
+					switch (zms[i].type)
+					{
+					case 0:frameMax = 21; break;//普通僵尸22帧
+					case 1:frameMax = 20; break;//路障    21帧
+					default:frameMax = 14;break;//铁桶    15帧
+					}
+				}
+				else {
+					if (zms[i].type == 0) {//在吃饭，如果是普通僵尸，就是21帧
+						frameMax = 20;
+					}
+					else {						//不是普通僵尸，就11帧
+						frameMax = 10;
+					}
+				}
+
+				if (zms[i].frame++ == frameMax)
+					zms[i].frame = 0;//此时frame已经等于图片帧数，下一次渲染就会数组越界，所以置零
+
+			}
+		}
+	}
+}
+
 //游戏窗口
 void UpdateWindow() {
 	//开始缓冲
@@ -241,27 +308,8 @@ void UpdateWindow() {
 	//阳光值
 	PutSunShineValue();
 
-	//渲染僵尸图片
-	for (int i = 0; i < zmNum; i++) {
-		if (zms[i].used) {
-			IMAGE* img = &imgZM[zms[i].frame];
-			putimagePNG(zms[i].x,
-				zms[i].y - (img->getheight()),
-				img);
-		}
-	}
-
-	//更新僵尸图片帧位置
-	static int count2 = 0;
-	if (count2++ == 100) {//动作降速器，机制相当于createZM当中的count
-		count2 = 0;
-		for (int i = 0; i < zmNum; i++) {
-			if (zms[i].used) {
-				if (zms[i].frame++ == 21)
-					zms[i].frame = 0;
-			}
-		}
-	}
+	//渲染所有已生成的僵尸
+	drawZM();
 
 	//结束缓冲
 	EndBatchDraw();
@@ -491,7 +539,7 @@ void UpdateSunshine() {
 	}
 }
 
-
+//创造僵尸
 void createZM() {
 	static int zmFre = 0;//创建僵尸的帧间隔，初始200
 	static int count = 0;//游戏帧计数器
@@ -503,30 +551,89 @@ void createZM() {
 		int i;
 		for (i = 0; i < zmNum && zms[i].used; i++);
 		if (i < zmNum) {
+			zms[i].row = (rand() % 5) + 1;
+			zm_nums[zms[i].row]++;//标记此行僵尸数量，不等于0即令豌豆射手吐痰
+			zms[i].type = rand()%3;//随机僵尸种类
 			zms[i].used = true;
+			zms[i].eating = false;
 			zms[i].x = WIN_WID;
-			zms[i].y = curY00 + cur_Height * (1 + rand() % 5);
+			zms[i].y = curY00 + cur_Height *  zms[i].row - 20;
 			zms[i].speed = 1;
+			zms[i].frame = 0;
 		}
 
 	}
 
 }
 
+//更新僵尸位置和状态
 void updateZM() {
 	static int count = 0;
 	count++;
 	if (count > 2) {
 		count = 0;
+		//遍历所有僵尸，更新一次状态
 		for (int i = 0; i < zmNum; i++) {
-			//僵尸位置更新
 			if (zms[i].used) {
-				zms[i].x -= zms[i].speed;
-				if (zms[i].x <= curX00)
+				//判断僵尸有没有在吃饭
+				if (!zms[i].eating) {
+					//没有则移动，僵尸位置更新
+					zms[i].x -= zms[i].speed;
+					
+					//移动后立即判断僵尸能不能开饭
+					for (int t = 0; t < 9; t++) {
+						if (AllMap[zms[i].row-1][t].type != 0) {//遍历判断该行每一个格子有无植物
+							int leftX = curX00 + (t-1) * cur_Width - 20;
+							int rigthX = leftX + cur_Width;
+							if (zms[i].x <= rigthX && zms[i].x >= leftX)//如果有，则判断该僵尸位置是否可以开吃
+							{
+								zms[i].eating = true;//使僵尸正在吃饭
+								zms[i].frame = 0;//并且从吃饭图片的第一帧开始播放
+								AllMap[zms[i].row - 1][t].beingEaten ++;//使该格植物被吃
+							}
+						}
+					}
+
+					//再判断游戏是否已经失败
+					if (zms[i].x <= (curX00 - 20))
+					{
+						//游戏失败
+						MessageBox(NULL, "over", "over", 0);
+						exit(0);
+					}
+				}
+				else
 				{
-					//游戏失败
-					MessageBox(NULL, "over", "over", 0);
-					exit(0);
+					//在吃饭就判断有没有吃完
+					for (int t = 0; t < 9; t++) {
+						if (AllMap[zms[i].row - 1][t].type == 0) {//遍历判断该行每一个格子有无植物
+							int leftX = curX00 + (t - 1) * cur_Width - 20;
+							int rigthX = leftX + cur_Width;
+							if (zms[i].x <= rigthX && zms[i].x >= leftX)//如果没植物，则判断该僵尸是否在这个位置
+							{
+								zms[i].eating = false;//使僵尸不再继续吃饭
+								zms[i].frame = 0;//并且从行走图片的第一帧开始播放
+							}
+						}
+					}
+				}
+			}
+		}
+
+		//遍历所有植物，使被吃的植物都扣一次血
+		for (int i = 0; i < 5; i++) {
+			for (int j = 0; j < 9; j++) {
+				if (AllMap[i][j].beingEaten)
+				{
+					AllMap[i][j].hp-= AllMap[i][j].beingEaten;
+					if (AllMap[i][j].hp<=0)//被撅死力（悲）
+					{
+						AllMap[i][j].type = 0;
+						AllMap[i][j].beingEaten = 0;
+						AllMap[i][j].frame = 0;
+						AllMap[i][j].hp = 0;
+						AllMap[i][j].timer = 0;
+					}
 				}
 			}
 		}
