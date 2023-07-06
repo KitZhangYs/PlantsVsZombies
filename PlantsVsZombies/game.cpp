@@ -7,9 +7,9 @@
 #define cur_Height 100						//每一个草坪块的x的长度
 #define cur_Width 81					    //每一个草坪块的y的长度
 #define zmNum 10                            //僵尸数量
-#define BULLET_MAX 10000						//子弹池数目
+#define BULLET_MAX 500						//子弹池数目
 
-enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb, CardCount };
+enum { PeaShooter, SunFlower, WallNut, PotatoMine, CardCount };
 IMAGE* Plants[CardCount][20];	//植物图片
 int CardNums[CardCount] = { 0 };	//植物图片数量
 bool judgePlant = false;		//判断是否捡起植物
@@ -23,9 +23,17 @@ IMAGE card_img[CardCount];		//植物卡片图片
 IMAGE sun_img[29];				//阳光图片
 IMAGE shovel_img;				//铲子图片
 IMAGE shovel_slot_img;			//铲子槽位图片
-IMAGE bul_img[2];					//子弹图片
+IMAGE bul_img[2];				//子弹图片
+IMAGE grey_card_img[CardCount]; //灰色植物卡牌
+IMAGE cd_card_img[CardCount];	//cd中植物卡牌
 int zm_nums[5];					//每行僵尸数量
 int bullet_nums[5];//每行子弹数量
+int bullet_nums[5];				//每行子弹数
+bool dis_afford[CardCount];		//是否买得起该植物
+int cd[CardCount];				//卡牌CD
+int plant_value[CardCount] = {100,50,50,25};		//植物价格
+int cd_num[CardCount] = { 300,300,300,300 };		//植物cd
+
 
 //植物
 struct plant {
@@ -107,11 +115,16 @@ void InitGame() {
 	memset(balls, 0, sizeof(balls));		//初始化阳光池
 	memset(zm_nums,0,sizeof(zm_nums)) ;		//初始化僵尸数量
 	memset(bullets, 0, sizeof(bullets));	//初始化子弹池
-	SunShineValue = 150;
+	memset(cd, 0, sizeof(cd));				//初始化卡牌CD
+	SunShineValue = 0;
 	//加载植物卡片
 	for (int i = 0; i < CardCount; i++) {
 		sprintf_s(name, sizeof(name), "res/Cards/card_%d.png", i + 1);
 		loadimage(&card_img[i], name);
+		sprintf_s(name, sizeof(name), "res/Cards_Black/card_%d.png", i + 1);
+		loadimage(&grey_card_img[i], name);
+		sprintf_s(name, sizeof(name), "res/Cards_CD/card_%d.png", i + 1);
+		loadimage(&cd_card_img[i], name);
 
 		for (int j = 0; j < 20; j++) {
 			sprintf_s(name, sizeof(name), "res/Plants/%d/%d.png", i, j + 1);
@@ -184,6 +197,21 @@ void InitGame() {
 	setcolor(BLACK);
 }
 
+//植物卡牌图片
+void PutPlantCard() {
+	for (int i = 0; i < CardCount; i++) {
+		if (cd[i]) {
+			putimagePNG(338 + i * 64, 6, &cd_card_img[i]);
+		}
+		else if (dis_afford[i]) {
+			putimagePNG(338 + i * 64, 6, &grey_card_img[i]);
+		}
+		else {
+			putimagePNG(338 + i * 64, 6, &card_img[i]);
+		}
+	}
+}
+
 //游戏背景
 void PutBackGround() {
 	//背景
@@ -191,12 +219,11 @@ void PutBackGround() {
 	//植物卡槽
 	putimagePNG(250, 0, &bar_img);
 	//植物卡牌
-	for (int i = 0; i < CardCount; i++) {
-		putimagePNG(338 + i * 64, 6, &card_img[i]);
-	}
+	PutPlantCard();
 	//铲子槽位
 	putimagePNG(338 + 8 * 64 + 10,10,&shovel_slot_img);
 }
+
 
 //种植后的植物
 void PutPlants() {
@@ -339,20 +366,54 @@ void PutBullet() {
 			}
 			else {
 				putimagePNG(bullets[i].x, bullets[i].y, &bul_img[1]);
-
+				bullet_nums[bullets[i].row - 1]--;
+				bullets[i].x = 0;
+				bullets[i].y = 0;
+				bullets[i].row = 0;
+				bullets[i].dmg = 0;
 			}
 		}
 	}
 }
 
+//暂停图标
+void Menu1(int just3) {
+	IMAGE imgBg2, imgMENU1, imgMENU2, imgMENU_exit1, imgMENU_exit2;
+	loadimage(&imgMENU1, "res/menu_1.png");
+	loadimage(&imgMENU2, "res/menu_2.png");
+	putimagePNG(888, 0, just3 ? &imgMENU1 : &imgMENU2);
+}
+
+//暂停菜单
+void pausepage(int* a) {
+	IMAGE imgBg3, back_game1, back_game2, begin_again1, begin_again2, main_menu1, main_menu2;
+	loadimage(&imgBg3, "res/pauseMenu.png");
+	loadimage(&back_game1, "res/back_game1.png");
+	loadimage(&back_game2, "res/back_game2.png");
+	loadimage(&begin_again1, "res/begin_again1.png");
+	loadimage(&begin_again2, "res/begin_again2.png");
+	loadimage(&main_menu1, "res/main_menu1.png");
+	loadimage(&main_menu2, "res/main_menu2.png");
+
+	putimagePNG(325, 80, &imgBg3);
+	putimagePNG(417, 355, a[0] ? &begin_again2 : &begin_again1);
+	putimagePNG(417, 405, a[1] ? &main_menu2 : &main_menu1);
+	putimagePNG(370, 478, a[2] ? &back_game1 : &back_game2);
+}
+
+
 //游戏窗口
-void UpdateWindow() {
+void UpdateWindow(int* just2, int* just3, int* a) {
 	//开始缓冲
 	BeginBatchDraw();
+
 
 	//游戏背景
 	PutBackGround();
 
+	//暂停图标
+	Menu1(*just3);
+  
 	//子弹图片
 	PutBullet();
 
@@ -377,6 +438,12 @@ void UpdateWindow() {
 	//更新已生成僵尸的图片帧
 	updateZmFrame();
 
+	//暂停菜单
+	if (*just2) {
+		pausepage(a);
+    }
+
+
 	//结束缓冲
 	EndBatchDraw();
 }
@@ -384,10 +451,15 @@ void UpdateWindow() {
 //选取植物
 void CatchPlant(ExMessage* msg) {
 	index = (msg->x - 338) / 64 + 1;
-	judgePlant = true;
-	curX = msg->x;
-	curY = msg->y;
-	PlaySound("res/audio/select.wav", NULL, SND_FILENAME | SND_ASYNC);
+	if (SunShineValue >= plant_value[index - 1] && !cd[index - 1]) {
+		judgePlant = true;
+		curX = msg->x;
+		curY = msg->y;
+		PlaySound("res/audio/select.wav", NULL, SND_FILENAME | SND_ASYNC);
+	}
+	else {
+		PlaySound("res/audio/cannotselect.wav", NULL, SND_FILENAME | SND_ASYNC);
+	}
 }
 
 //初始化植物
@@ -398,16 +470,16 @@ void InitPlant(int row, int col, int type) {
 	switch (type - 1)
 	{
 	case PeaShooter:
-		p_hp = 300;
+		p_hp = 200;
 		break;
 	case SunFlower:
-		p_hp = 300;
+		p_hp = 200;
 		break;
 	case WallNut:
-		p_hp = 4000;
+		p_hp = 3000;
 		break;
 	case PotatoMine:
-		p_hp = 300;
+		p_hp = 200;
 		break;
 	default:
 		break;
@@ -426,6 +498,8 @@ void Planting(ExMessage* msg) {
 		if (AllMap[row][col].type == 0) {
 			InitPlant(row, col, index);
 			PlaySound("res/audio/plantdown.wav", NULL, SND_FILENAME | SND_ASYNC);
+			SunShineValue -= plant_value[index - 1];
+			cd[index - 1] = cd_num[index - 1];
 		}
 	}
 	index = 0;
@@ -648,6 +722,9 @@ void FiringBullets() {
 					bullets[k].used = true;
 					bullets[k].row = i + 1;
 					bullet_nums[bullets[k].row-1]++;
+					bullet_nums[i] ++;
+					printf("%d   %d\n", i,bullet_nums[i]);
+
 					bullets[k].x = x + 60;
 					bullets[k].y = y + 10;
 					bullets[k].dmg = 20;
@@ -679,7 +756,7 @@ void createZM() {
 		for (i = 0; i < zmNum && zms[i].used; i++);
 		if (i < zmNum) {
 			zms[i].row = (rand() % 5) + 1;
-			zm_nums[zms[i].row]++;//标记此行僵尸数量，不等于0即令豌豆射手吐痰
+			zm_nums[zms[i].row - 1]++;//标记此行僵尸数量，不等于0即令豌豆射手吐痰
 			zms[i].type = rand()%3;//随机僵尸种类
 			zms[i].used = true;
 			zms[i].eating = false;
@@ -718,17 +795,17 @@ void updateZM() {
 				//判断该行有没有子弹
 				if (bullet_nums[zms[i].row-1]) {
 					for (int j = 0; j < BULLET_MAX; j++) {
-						if (bullets[j].used&&bullets[j].row==zms[i].row) {
+						if (bullets[j].used&&bullets[j].row==zms[i].row) {//以在同一行为前提
 							int leftX = zms[i].x+70;
 							int rightX = leftX + 10;
 							int X = bullets[j].x + 24;
-							if (X >= leftX && X <= rightX) {
+							if (X >= leftX && X <= rightX) {//豌豆碰到僵尸
 								bullets[j].used = false;//销毁子弹
 								zms[i].hp--;//僵尸扣血
 								if (zms[i].hp<=0)
 								{
-									zms[i].dead++;
-									zms[i].frame = 0;
+									zms[i].dead++;//僵尸倒了，还没死透
+									zms[i].frame = 0;//从死亡动画第一帧开始
 									//如果该僵尸正在吃饭，则找到正在被他吃的植物
 									if (zms[i].eating) {
 										for (int t = 0; t < 9; t++) {
@@ -827,8 +904,35 @@ void UpdateBullet() {
 			if (bullets[i].x >= 1000) {
 				bullets[i].x = 0;
 				bullets[i].y = 0;
+				bullet_nums[bullets[i].row - 1]--;
+				bullets[i].row = 0;
 				bullets[i].used = false;
 			}
+		}
+	}
+}
+
+//更新植物卡牌状态
+void UpdateCard() {
+	//是否买得起
+	if (SunShineValue >= 100) {
+		memset(dis_afford, 0, sizeof(dis_afford));
+	}
+	else if (SunShineValue >= 50) {
+		memset(dis_afford, 0, sizeof(dis_afford));
+		dis_afford[PeaShooter] = true;
+	}
+	else if (SunShineValue >= 25) {
+		memset(dis_afford, true, sizeof(dis_afford));
+		dis_afford[PotatoMine] = false;
+	}
+	else {
+		memset(dis_afford, true, sizeof(dis_afford));
+	}
+	
+	for (int i = 0; i < CardCount; i++) {
+		if (cd[i]) {
+			cd[i]--;
 		}
 	}
 }
@@ -841,6 +945,7 @@ void UpdateGame() {
 	UpdateSunshine();
 	UpdateBullet();
 	FiringBullets();
+	UpdateCard();
 
 	createZM();//每一帧调用一次的方法创建僵尸
 	updateZM();//每一帧刷新一次僵尸
@@ -848,8 +953,14 @@ void UpdateGame() {
 
 //开始游戏
 void GameStart() {
-	int just = 0;//判断开始游戏还是退出，just=1开始，juat=2退出
+	int just = 0;//判断开始游戏还是退出，just=1开始，just=2退出
+	int just2 = 0,just3=0,just4=0;//判断是否暂停
+	int a[3] = { 0,0,0 };//判断继续，重新开始或者返回菜单
+
+	start:
 	startUI(&just);
+    again:
+	just2 =just4= 0;
 	if (just == 1) {
 		mciSendString("close bg", 0, 0, 0);
 		bool flag = false;
@@ -864,12 +975,29 @@ void GameStart() {
 				flag = true;
 				timer = 0;
 			}
-			UpdateWindow();
-			if (flag) {
+			UpdateWindow(&just2,&just3,a);
+			menu(&just2, &just3);
+			if (just2) {
+					pause_page(&just4, a);
+					if (just4 == 1) { 
+						InitGame();
+						goto again;
+					}
+					else if (just4 == 2) {
+						InitGame();
+						goto start;
+						
+					}
+					else if (just4 == 3) {
+						just2 = 0;
+						just4 = 0;
+					}
+			}
+			if (flag&&just2==0) {
 				flag = false;
 				UpdateGame();
 			}
-
 		}
+
 	}
 }
