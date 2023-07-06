@@ -28,7 +28,6 @@ IMAGE grey_card_img[CardCount]; //灰色植物卡牌
 IMAGE cd_card_img[CardCount];	//cd中植物卡牌
 int zm_nums[5];					//每行僵尸数量
 int bullet_nums[5];//每行子弹数量
-int bullet_nums[5];				//每行子弹数
 bool dis_afford[CardCount];		//是否买得起该植物
 int cd[CardCount];				//卡牌CD
 int plant_value[CardCount] = {100,50,50,25};		//植物价格
