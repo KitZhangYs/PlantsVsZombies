@@ -111,7 +111,7 @@ void InitGame() {
 	memset(zm_nums,0,sizeof(zm_nums)) ;		//初始化僵尸数量
 	memset(bullets, 0, sizeof(bullets));	//初始化子弹池
 	memset(cd, 0, sizeof(cd));				//初始化卡牌CD
-	SunShineValue = 0;
+	SunShineValue = 150;
 	//加载植物卡片
 	for (int i = 0; i < CardCount; i++) {
 		sprintf_s(name, sizeof(name), "res/Cards/card_%d.png", i + 1);
@@ -631,29 +631,31 @@ void UpdateSunshine() {
 void FiringBullets() {
 	static int fre = 35;
 	for (int i = 0; i < 5; i++) {
-		for (int j = 0; j < 9 ; j++) {
-			if (AllMap[i][j].type - 1 == PeaShooter) {
-				if (AllMap[i][j].timer >= fre) {
-					int k;
-					for (k = 0; k < BULLET_MAX && bullets[k].used; k++);
-					int x = curX00 + j * cur_Width;
-					int y = curY00 + i * cur_Height;
-					bullets[k].used = true;
-					bullets[k].row = i + 1;
-					bullet_nums[i] ++;
-					printf("%d   %d\n", i,bullet_nums[i]);
-					bullets[k].x = x + 60;
-					bullets[k].y = y + 10;
-					bullets[k].dmg = 20;
-					AllMap[i][j].timer = 0;
-					int flag = rand() % 2;				//随机播放这两个音效中的一个
-					if (flag == 2)
-						PlaySound("res/audio/shootpea.wav", NULL, SND_FILENAME | SND_ASYNC);
-					else
-						PlaySound("res/audio/shootpea2.wav", NULL, SND_FILENAME | SND_ASYNC);
-				}
-				else {
-					AllMap[i][j].timer++;
+		if (zm_nums[i]) {
+			for (int j = 0; j < 9; j++) {
+				if (AllMap[i][j].type - 1 == PeaShooter) {
+					if (AllMap[i][j].timer >= fre) {
+						int k;
+						for (k = 0; k < BULLET_MAX && bullets[k].used; k++);
+						int x = curX00 + j * cur_Width;
+						int y = curY00 + i * cur_Height;
+						bullets[k].used = true;
+						bullets[k].row = i + 1;
+						bullet_nums[i] ++;
+						printf("%d   %d\n", i, bullet_nums[i]);
+						bullets[k].x = x + 60;
+						bullets[k].y = y + 10;
+						bullets[k].dmg = 20;
+						AllMap[i][j].timer = 0;
+						int flag = rand() % 2;				//随机播放这两个音效中的一个
+						if (flag == 2)
+							PlaySound("res/audio/shootpea.wav", NULL, SND_FILENAME | SND_ASYNC);
+						else
+							PlaySound("res/audio/shootpea2.wav", NULL, SND_FILENAME | SND_ASYNC);
+					}
+					else {
+						AllMap[i][j].timer++;
+					}
 				}
 			}
 		}
