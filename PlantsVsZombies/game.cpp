@@ -25,6 +25,7 @@ IMAGE shovel_img;				//铲子图片
 IMAGE shovel_slot_img;			//铲子槽位图片
 IMAGE bul_img[2];					//子弹图片
 int zm_nums[5];					//每行僵尸数量
+int bullet_nums[5];//每行子弹数量
 
 //植物
 struct plant {
@@ -85,11 +86,14 @@ struct zm
 	bool used;//是否出场
 	int speed;//移动速度
 	bool eating;//是否在吃
-	int row;
+	int row;//当前所在行数
+	int hp;//血量
+	int dead;//存活状态 0活 1正在死 2已经死了
 };
 struct zm zms[zmNum];//僵尸总数（10个
 IMAGE imgZM[3][22];//储存三种僵尸每一帧动画的IMG数组
 IMAGE imgZMEating[3][21];//储存三种僵尸吃饭动画的IMG数组，最多21张
+IMAGE imgZMDead[10];
 
 //游戏内容初始化
 void InitGame() {
@@ -148,6 +152,12 @@ void InitGame() {
 			sprintf_s(name, sizeof(name), "res/zm_eat/%d/%d.png", j, i + 1);
 			loadimage(&imgZMEating[j][i], name);
 		}
+	}
+	//初始化僵尸死亡图片
+	for (int i = 0; i < 10; i++) {
+		char name[64];
+		sprintf_s(name, sizeof(name), "res/zm_dead/%d.png", i + 1);
+		loadimage(&imgZMDead[i], name);
 	}
 
 	//加载铲子槽位图片
@@ -237,56 +247,86 @@ void PutShovel() {				//渲染未拖动的以及拖动过程中的铲子
 		putimagePNG(338 + 8*64 + 10, 10,&shovel_img );		//铲子70像素宽
 }
 
+//更新僵尸图片帧
+void updateZmFrame() {
+	static int count = 0;//动作降速器，机制同理于createZM当中的count
+	//使用降速器更新图片帧位置
+	if (count++ == 80) {
+		count = 0;
+		for (int i = 0; i < zmNum; i++) {
 
-//绘制僵尸并更新图片帧
-void drawZM() {
+			//僵尸死透直接检查下一个僵尸
+			if (zms[i].dead == 2) {
+				continue;
+			}
 
-	//渲染僵尸图片
-	for (int i = 0; i < zmNum; i++) {
-		if (zms[i].used) {
-			IMAGE* img;
-			if(zms[i].eating){		//根据僵尸是否在吃饭判断加载哪个数组的图片
-				img = &imgZMEating[zms[i].type][zms[i].frame];
+			int frameMax;//计算最高帧位，死亡动画只有10帧
+			if (!zms[i].eating) {//如果没在吃饭，判断僵尸种类
+				switch (zms[i].type)
+				{
+				case 0:frameMax = 21; break;//普通僵尸走路22帧
+				case 1:frameMax = 20; break;//路障    走路21帧
+				default:frameMax = 14; break;//铁桶    走路15帧
+				}
 			}
 			else {
-				img = &imgZM[zms[i].type][zms[i].frame];
+				if (zms[i].type == 0) {//在吃饭，如果是普通僵尸，就是21帧
+					frameMax = 20;
+				}
+				else {						//不是普通僵尸，就11帧
+					frameMax = 10;
+				}
 			}
-			putimagePNG(zms[i].x,
-				zms[i].y - (img->getheight()),
-				img);				//统一渲染
-			
+
+			//如果僵尸正在死并且已播放了最后一帧图片，就死透了
+			if (zms[i].dead == 1 && zms[i].frame == 9) {
+				zms[i].dead++;
+				zm_nums[zms[i].row]--;
+			}
+
+			//frame在执行++后等于图片帧数，不做操作则下一次渲染就会数组越界，故置零
+			if (zms[i].frame++ == frameMax) {
+				zms[i].frame = 0;
+			}
+
 		}
 	}
+}
 
-	//更新僵尸图片帧位置
-	static int count2 = 0;//动作降速器，机制同理于createZM当中的count
-	if (count2++ == 100) {
-		count2 = 0;
+//绘制僵尸
+void drawZM() {
 		for (int i = 0; i < zmNum; i++) {
+			
+			//僵尸死透直接检查下一个僵尸
+			if (zms[i].dead == 2) {
+				continue;
+			}
+			
+			//如果僵尸没死透，且已使用则渲染并更新图片帧位置
 			if (zms[i].used) {
-				int frameMax;
-				if (!zms[i].eating) {//如果没在吃饭，判断僵尸种类
-					switch (zms[i].type)
-					{
-					case 0:frameMax = 21; break;//普通僵尸22帧
-					case 1:frameMax = 20; break;//路障    21帧
-					default:frameMax = 14;break;//铁桶    15帧
-					}
+				//先渲染
+				IMAGE* img;
+				if (zms[i].dead == 1)
+				{
+					img = &imgZMDead[zms[i].frame];
 				}
 				else {
-					if (zms[i].type == 0) {//在吃饭，如果是普通僵尸，就是21帧
-						frameMax = 20;
+					if (zms[i].eating) {		//根据僵尸是否在吃饭判断加载哪个数组的图片
+						img = &imgZMEating[zms[i].type][zms[i].frame];
 					}
-					else {						//不是普通僵尸，就11帧
-						frameMax = 10;
+					else {
+						img = &imgZM[zms[i].type][zms[i].frame];
 					}
 				}
+				putimagePNG(zms[i].x,
+					zms[i].y - (img->getheight()),
+					img);				//统一渲染
 
-				if (zms[i].frame++ == frameMax)
-					zms[i].frame = 0;//此时frame已经等于图片帧数，下一次渲染就会数组越界，所以置零
+				
+
 			}
 		}
-	}
+	
 }
 
 
@@ -333,6 +373,9 @@ void UpdateWindow() {
 
 	//渲染所有已生成的僵尸
 	drawZM();
+
+	//更新已生成僵尸的图片帧
+	updateZmFrame();
 
 	//结束缓冲
 	EndBatchDraw();
@@ -604,6 +647,7 @@ void FiringBullets() {
 					int y = curY00 + i * cur_Height;
 					bullets[k].used = true;
 					bullets[k].row = i + 1;
+					bullet_nums[bullets[k].row-1]++;
 					bullets[k].x = x + 60;
 					bullets[k].y = y + 10;
 					bullets[k].dmg = 20;
@@ -643,6 +687,14 @@ void createZM() {
 			zms[i].y = curY00 + cur_Height *  zms[i].row - 20;
 			zms[i].speed = 1;
 			zms[i].frame = 0;
+			zms[i].dead = 0;
+			switch (zms[i].type)
+			{
+			case 0:zms[i].hp = 20; break;
+			case 1:zms[i].hp = 50; break;
+			default:zms[i].hp = 80;
+				break;
+			}
 		}
 
 	}
@@ -653,74 +705,118 @@ void createZM() {
 void updateZM() {
 	static int count = 0;
 	count++;
-	if (count > 2) {
-		count = 0;
+	
 		//遍历所有僵尸，更新一次状态
 		for (int i = 0; i < zmNum; i++) {
 			if (zms[i].used) {
-				//判断僵尸有没有在吃饭
-				if (!zms[i].eating) {
-					//没有则移动，僵尸位置更新
-					zms[i].x -= zms[i].speed;
-					
-					//移动后立即判断僵尸能不能开饭
-					for (int t = 0; t < 9; t++) {
-						if (AllMap[zms[i].row-1][t].type != 0) {//遍历判断该行每一个格子有无植物
-							int leftX = curX00 + (t-1) * cur_Width - 20;
-							int rigthX = leftX + cur_Width;
-							if (zms[i].x <= rigthX && zms[i].x >= leftX)//如果有，则判断该僵尸位置是否可以开吃
-							{
-								zms[i].eating = true;//使僵尸正在吃饭
-								zms[i].frame = 0;//并且从吃饭图片的第一帧开始播放
-								AllMap[zms[i].row - 1][t].beingEaten ++;//使该格植物被吃
+
+				//死了下一个
+				if (zms[i].dead >= 1) {
+					continue;
+				}
+
+				//判断该行有没有子弹
+				if (bullet_nums[zms[i].row-1]) {
+					for (int j = 0; j < BULLET_MAX; j++) {
+						if (bullets[j].used&&bullets[j].row==zms[i].row) {
+							int leftX = zms[i].x+70;
+							int rightX = leftX + 10;
+							int X = bullets[j].x + 24;
+							if (X >= leftX && X <= rightX) {
+								bullets[j].used = false;//销毁子弹
+								zms[i].hp--;//僵尸扣血
+								if (zms[i].hp<=0)
+								{
+									zms[i].dead++;
+									zms[i].frame = 0;
+									//如果该僵尸正在吃饭，则找到正在被他吃的植物
+									if (zms[i].eating) {
+										for (int t = 0; t < 9; t++) {
+											if (AllMap[zms[i].row - 1][t].type != 0) {
+												int leftX = curX00 + (t - 1) * cur_Width - 20;
+												int rigthX = leftX + cur_Width;
+												if (zms[i].x <= rigthX && zms[i].x >= leftX) {
+												AllMap[zms[i].row - 1][t].beingEaten-=1;//减少该植物被吃的频率
+												}
+											}
+										}
+									}
+									
+								}
 							}
 						}
 					}
-
-					//再判断游戏是否已经失败
-					if (zms[i].x <= (curX00 - 20))
-					{
-						//游戏失败
-						MessageBox(NULL, "over", "over", 0);
-						exit(0);
-					}
 				}
-				else
-				{
-					//在吃饭就判断有没有吃完
-					for (int t = 0; t < 9; t++) {
-						if (AllMap[zms[i].row - 1][t].type == 0) {//遍历判断该行每一个格子有无植物
-							int leftX = curX00 + (t - 1) * cur_Width - 20;
-							int rigthX = leftX + cur_Width;
-							if (zms[i].x <= rigthX && zms[i].x >= leftX)//如果没植物，则判断该僵尸是否在这个位置
-							{
-								zms[i].eating = false;//使僵尸不再继续吃饭
-								zms[i].frame = 0;//并且从行走图片的第一帧开始播放
+				if (count > 4) {
+					//判断僵尸有没有在吃饭
+					if (!zms[i].eating) {
+						//没有则移动，僵尸位置更新
+						zms[i].x -= zms[i].speed;
+
+						//移动后立即判断僵尸能不能开饭
+						for (int t = 0; t < 9; t++) {
+							if (AllMap[zms[i].row - 1][t].type != 0) {//遍历判断该行每一个格子有无植物
+								int leftX = curX00 + (t - 1) * cur_Width - 20;
+								int rigthX = leftX + cur_Width;
+								if (zms[i].x <= rigthX && zms[i].x >= leftX)//如果有，则判断该僵尸位置是否可以开吃
+								{
+									zms[i].eating = true;//使僵尸正在吃饭
+									zms[i].frame = 0;//并且从吃饭图片的第一帧开始播放
+									AllMap[zms[i].row - 1][t].beingEaten+=1;//使该格植物被吃
+								}
 							}
+						}
+
+						//再判断游戏是否已经失败
+						if (zms[i].x <= (curX00 - 20))
+						{
+							//游戏失败
+							MessageBox(NULL, "over", "over", 0);
+							exit(0);
+						}
+					}
+					else
+					{
+						//在吃饭就判断有没有吃完
+						for (int t = 0; t < 9; t++) {
+							if (AllMap[zms[i].row - 1][t].type == 0) {//遍历判断该行每一个格子有无植物
+								int leftX = curX00 + (t - 1) * cur_Width - 20;
+								int rigthX = leftX + cur_Width;
+								if (zms[i].x <= rigthX && zms[i].x >= leftX)//如果没植物，则判断该僵尸是否在这个位置
+								{
+									zms[i].eating = false;//使僵尸不再继续吃饭
+									zms[i].frame = 0;//并且从行走图片的第一帧开始播放
+								}
+							}
+							
 						}
 					}
 				}
 			}
 		}
 
-		//遍历所有植物，使被吃的植物都扣一次血
-		for (int i = 0; i < 5; i++) {
-			for (int j = 0; j < 9; j++) {
-				if (AllMap[i][j].beingEaten)
-				{
-					AllMap[i][j].hp-= AllMap[i][j].beingEaten;
-					if (AllMap[i][j].hp<=0)//被撅死力（悲）
+		if (count > 4) {
+			count = 0;
+			//遍历所有植物，使被吃的植物都扣一次血
+			for (int i = 0; i < 5; i++) {
+				for (int j = 0; j < 9; j++) {
+					if (AllMap[i][j].beingEaten)
+						printf("%d %d %d", i, j, AllMap[i][j].beingEaten);
 					{
-						AllMap[i][j].type = 0;
-						AllMap[i][j].beingEaten = 0;
-						AllMap[i][j].frame = 0;
-						AllMap[i][j].hp = 0;
-						AllMap[i][j].timer = 0;
+						AllMap[i][j].hp -= AllMap[i][j].beingEaten;
+						if (AllMap[i][j].hp <= 0)//被撅死力（悲）
+						{
+							AllMap[i][j].type = 0;
+							AllMap[i][j].beingEaten = 0;
+							AllMap[i][j].frame = 0;
+							AllMap[i][j].hp = 0;
+							AllMap[i][j].timer = 0;
+						}
 					}
 				}
 			}
 		}
-	}
+	
 }
 
 //更新子弹状态
