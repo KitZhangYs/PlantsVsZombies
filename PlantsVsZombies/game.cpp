@@ -12,6 +12,7 @@ enum { PeaShooter, SunFlower, WallNut, PotatoMine, CherryBomb, CardCount };
 IMAGE* Plants[CardCount][20];	//植物图片
 int CardNums[CardCount] = { 0 };	//植物图片数量
 bool judgePlant = false;		//判断是否捡起植物
+bool judgeShovel = false;		//判断是否捡起铲子
 int curX, curY;					//当前植物移动过程中的位置
 bool fileExist(char* name);		//判断文件是否存在
 int index = -1;					//当前植物索引值
@@ -19,6 +20,9 @@ IMAGE back_ground_img;			//游戏背景图片
 IMAGE bar_img;					//植物卡槽图片
 IMAGE card_img[CardCount];		//植物卡片图片
 IMAGE sun_img[29];				//阳光图片
+IMAGE shovel_img;				//铲子图片
+IMAGE shovel_slot_img;			//铲子槽位图片
+int zm_nums[5];					//每行僵尸数量
 
 //植物
 struct plant {
@@ -27,8 +31,6 @@ struct plant {
 	int timer;					//植物功能冷却时间（向日葵生产阳光、豌豆发射子弹等）
 	int hp;						//植物生命值
 };
-
-
 
 //全地图植物数组
 struct plant AllMap[5][9] = { 0 };
@@ -45,10 +47,21 @@ struct SunShine {
 	float yoff;					//y偏移量
 };
 
+//子弹
+struct bullet{
+	int x, y;					//子弹当前坐标
+	int row;					//子弹所在行数
+	int dmg;					//子弹伤害
+	bool used;					//子弹使用状态
+};
+
 //阳光池
 struct SunShine balls[100];
 
-int SunShineValue = 50;
+//子弹池
+struct bullet bullets[100];
+
+int SunShineValue = 150;
 
 bool fileExist(char* name) {
 	FILE* fp = fopen(name, "r");
@@ -78,9 +91,11 @@ void InitGame() {
 	//加载植物卡槽
 	loadimage(&bar_img, "res/bar5.png");
 	char name[64];
-	memset(Plants, 0, sizeof(Plants));
-	memset(AllMap, 0, sizeof(AllMap));
-	memset(balls, 0, sizeof(balls));
+	memset(Plants, 0, sizeof(Plants));		//初始化植物图片
+	memset(AllMap, 0, sizeof(AllMap));		//初始化全地图植物
+	memset(balls, 0, sizeof(balls));		//初始化阳光池
+	memset(zm_nums,0,sizeof(zm_nums)) ;		//初始化僵尸数量
+	memset(bullets, 0, sizeof(bullets));	//初始化子弹池
 	SunShineValue = 150;
 	//加载植物卡片
 	for (int i = 0; i < CardCount; i++) {
@@ -118,6 +133,10 @@ void InitGame() {
 		loadimage(&imgZM[i], name);
 	}
 
+	//加载铲子槽位图片
+	loadimage(&shovel_slot_img, "res/shovelSlot.png");
+	//加载铲子图片
+	loadimage(&shovel_img,"res/shovel.png");
 
 	//创建游戏窗口
 	initgraph(WIN_WID, WIN_HIG, EX_SHOWCONSOLE);
@@ -144,6 +163,8 @@ void PutBackGround() {
 	for (int i = 0; i < CardCount; i++) {
 		putimagePNG(338 + i * 64, 6, &card_img[i]);
 	}
+	//铲子槽位
+	putimagePNG(338 + 8 * 64 + 10,10,&shovel_slot_img);
 }
 
 //种植后的植物
@@ -187,6 +208,14 @@ void PutSunShineValue() {
 	outtextxy(curX00 + 100, curY00 - 28, score);
 }
 
+//铲子
+void PutShovel() {				//渲染未拖动的以及拖动过程中的铲子
+	if (judgeShovel == true)
+		putimagePNG(curX - 32, curY - 32, &shovel_img);
+	else
+		putimagePNG(338 + 8*64 + 10, 10,&shovel_img );		//铲子70像素宽
+}
+
 //游戏窗口
 void UpdateWindow() {
 	//开始缓冲
@@ -197,6 +226,9 @@ void UpdateWindow() {
 
 	//种植后的植物
 	PutPlants();
+
+	//铲子
+	PutShovel();
 
 	//拖动过程中的植物
 	PutDrag();
@@ -305,26 +337,33 @@ void CollectSunShine(ExMessage* msg) {
 	}
 }
 
+
 //点击判断
 void Click() {
 	ExMessage msg;
 	if (peekmessage(&msg)) {
 		//首次点击植物卡片
-		if (msg.message == WM_LBUTTONDOWN && judgePlant == false) {
+		if (msg.message == WM_LBUTTONDOWN && judgePlant == false && judgeShovel == false) {
 			if (msg.x > 338 && msg.x < 338 + 64 * CardCount && msg.y>6 && msg.y < 96) {
 				CatchPlant(&msg);
+			}
+			else if (msg.x > 338 + 8 * 64 + 10 && msg.x < 338 + 8 * 64 + 80 && msg.y > 10 && msg.y < 80) {
+
 			}
 			else {
 				CollectSunShine(&msg);
 			}
 		}
-		else if (msg.message == WM_MOUSEMOVE && judgePlant == true) {
+		//植物卡牌拖动
+		else if (msg.message == WM_MOUSEMOVE && judgePlant == true && judgeShovel == false) {
 			curX = msg.x;
 			curY = msg.y;
 		}
-		else if (msg.message == WM_LBUTTONDOWN && judgePlant == true) {
+		//植物卡牌种植
+		else if (msg.message == WM_LBUTTONDOWN && judgePlant == true && judgeShovel == false) {
 			Planting(&msg);
 		}
+		
 	}
 }
 
