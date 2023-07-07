@@ -6,7 +6,7 @@
 #define curY00 95							//第一行第一列草坪块的左上角位置的y值
 #define cur_Height 100						//每一个草坪块的x的长度
 #define cur_Width 81					    //每一个草坪块的y的长度
-#define zmNum 10                            //僵尸数量
+#define zmNum 50                            //僵尸数量
 #define BULLET_MAX 500						//子弹池数目
 
 int just = 0;//判断开始游戏还是退出，just=1开始，just=2退出
@@ -32,7 +32,7 @@ IMAGE cd_card_img[CardCount];	//cd中植物卡牌
 IMAGE imgBg2, imgMENU1, imgMENU2, imgMENU_exit1, imgMENU_exit2;
 IMAGE imgBg3, back_game1, back_game2, begin_again1, begin_again2, main_menu1, main_menu2;
 IMAGE nut_state[3][20];			//坚果墙状态图片
-IMAGE potato_state[2][10];		//土豆雷状态图片
+IMAGE potato_state[3][10];		//土豆雷状态图片
 int NutImgNum[3] = { 0 };		//坚果墙状态图片数量
 int PotatoImgNum[2] = { 0 };	//土豆雷状态图片数量
 int zm_nums[5];					//每行僵尸数量
@@ -178,7 +178,7 @@ void InitGame() {
 	}
 
 	//加载土豆雷状态图片
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 10; j++) {
 			sprintf_s(name, sizeof(name), "res/Plants/status/%d/%d.png", i+3, j + 1);
 			if (fileExist(name)) {
@@ -297,6 +297,9 @@ void PutPlants() {
 				}
 				else if (AllMap[i][j].type - 1 == PotatoMine) {
 					putimagePNG(x, y, &potato_state[AllMap[i][j].state][page]);
+					if (AllMap[i][j].state == 2) {
+						putimagePNG(x, y, &potato_state[2][1]);
+					}
 				}
 				else {
 					putimagePNG(x, y, Plants[plant_type][page]);
@@ -663,7 +666,7 @@ void PlantSwing() {
 					}
 				}
 				else if (AllMap[i][j].type - 1 == PotatoMine) {
-					if (AllMap[i][j].frame < PotatoImgNum[AllMap[i][j].state] - 1) {
+					if (AllMap[i][j].state != 2 && AllMap[i][j].frame < PotatoImgNum[AllMap[i][j].state] - 1) {
 						AllMap[i][j].frame++;
 					}
 					else {
@@ -834,7 +837,7 @@ void createZM() {
 		int i;
 		for (i = 0; i < zmNum && zms[i].used; i++);
 		if (i < zmNum) {
-			zms[i].row = (rand() % 5) + 1;
+			zms[i].row = (0*rand() % 5) + 3;
 			zm_nums[zms[i].row - 1]++;//标记此行僵尸数量，不等于0即令豌豆射手吐痰
 			zms[i].type = rand() % 3;//随机僵尸种类
 			zms[i].used = true;
@@ -1043,12 +1046,46 @@ void UpdatePlantStatu() {
 	}
 }
 
+//土豆雷爆炸检测
+void PotatoBomb() {
+	//遍历草坪块
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 9; j++) {
+			if (AllMap[i][j].type - 1 == PotatoMine) {
+				//如果土豆雷已经准备好了则遍历所有僵尸确定范围
+				if (AllMap[i][j].state == 1 && AllMap[i][j].beingEaten != 0) {
+					for (int k = 0; k < zmNum; k++) {
+						//土豆雷的半径检测
+						if (zms[k].used && zms[k].dead == 0 && zms[k].row == i+1 && zms[k].x <= curX00 + j * cur_Width +40 && zms[k].x >= curX00 + (j - 1) * cur_Width -40) {
+							zms[k].dead = 2;
+							zm_nums[i]--;
+						}
+					}
+					AllMap[i][j].state = 2;
+					AllMap[i][j].frame = 0;
+					AllMap[i][j].timer = 200;
+				}
+				//如果土豆雷已经爆炸了则继续计时
+				else if (AllMap[i][j].state == 2) {
+					if (AllMap[i][j].timer >= 225) {
+						AllMap[i][j].type = 0;
+					}
+					else {
+						AllMap[i][j].timer++;
+					}
+				}
+			}
+		}
+	}
+}
+
 //更新游戏内信息
 void UpdateGame() {
 	PlantSwing();
 	CreateSunshine();
 	SunFlowerSunshine();
 	UpdateSunshine();
+	PotatoBomb();
 	UpdateBullet();
 	FiringBullets();
 	UpdateCard();
