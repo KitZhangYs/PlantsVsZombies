@@ -31,13 +31,17 @@ IMAGE grey_card_img[CardCount]; //灰色植物卡牌
 IMAGE cd_card_img[CardCount];	//cd中植物卡牌
 IMAGE imgBg2, imgMENU1, imgMENU2, imgMENU_exit1, imgMENU_exit2;
 IMAGE imgBg3, back_game1, back_game2, begin_again1, begin_again2, main_menu1, main_menu2;
+IMAGE nut_state[3][20];			//坚果墙状态图片
+IMAGE potato_state[2][10];		//土豆雷状态图片
+int NutImgNum[3] = { 0 };		//坚果墙状态图片数量
+int PotatoImgNum[2] = { 0 };	//土豆雷状态图片数量
 int zm_nums[5];					//每行僵尸数量
-int bullet_nums[5];//每行子弹数量
+int bullet_nums[5];				//每行子弹数量
 bool dis_afford[CardCount];		//是否买得起该植物
 int cd[CardCount];				//卡牌CD
 int plant_value[CardCount] = { 100,50,50,25 };		//植物价格
-int cd_num[CardCount] = { 300,300,300,300 };		//植物cd
-
+int cd_num[CardCount] = { 200,200,200,200 };		//植物cd
+bool zom_birth;					//是否开始生成僵尸
 
 //植物
 struct plant {
@@ -45,6 +49,7 @@ struct plant {
 	int frame;					//当前是第几帧
 	int timer;					//植物功能冷却时间（向日葵生产阳光、豌豆发射子弹等）
 	int hp;						//植物生命值
+	int state;					//植物状态
 	int beingEaten;				//正在被几个人撅
 };
 
@@ -68,6 +73,7 @@ struct bullet {
 	int x, y;					//子弹当前坐标
 	int row;					//子弹所在行数
 	int dmg;					//子弹伤害
+	int boom_timer;				//子弹炸掉计时
 	bool used;					//子弹使用状态
 };
 
@@ -120,6 +126,7 @@ void InitData() {
 	SunShineValue = 150;
 	judgePlant = false;
 	judgeShovel = false;
+	zom_birth = false;
 	//随机种子
 	srand(time(NULL));
 }
@@ -156,6 +163,33 @@ void InitGame() {
 		}
 	}
 
+	//加载坚果墙三种状态的图片
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 20; j++) {
+			sprintf_s(name, sizeof(name), "res/Plants/status/%d/%d.png", i, j + 1);
+			if (fileExist(name)) {
+				loadimage(&nut_state[i][j], name);
+				NutImgNum[i]++;
+			}
+			else {
+				break;
+			}
+		}
+	}
+
+	//加载土豆雷状态图片
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 10; j++) {
+			sprintf_s(name, sizeof(name), "res/Plants/status/%d/%d.png", i+3, j + 1);
+			if (fileExist(name)) {
+				loadimage(&potato_state[i][j], name);
+				PotatoImgNum[i]++;
+			}
+			else {
+				break;
+			}
+		}
+	}
 
 	//加载阳光图片
 	for (int i = 0; i < 29; i++) {
@@ -258,7 +292,15 @@ void PutPlants() {
 				int y = curY00 + i * cur_Height;
 				int plant_type = AllMap[i][j].type - 1;
 				int page = AllMap[i][j].frame;
-				putimagePNG(x, y, Plants[plant_type][page]);
+				if (AllMap[i][j].type -1 == WallNut) {
+					putimagePNG(x, y, &nut_state[AllMap[i][j].state][page]);
+				}
+				else if (AllMap[i][j].type - 1 == PotatoMine) {
+					putimagePNG(x, y, &potato_state[AllMap[i][j].state][page]);
+				}
+				else {
+					putimagePNG(x, y, Plants[plant_type][page]);
+				}
 			}
 		}
 	}
@@ -332,7 +374,7 @@ void updateZmFrame() {
 			//如果僵尸正在死并且已播放了最后一帧图片，就死透了
 			if (zms[i].dead == 1 && zms[i].frame == 9) {
 				zms[i].dead++;
-				zm_nums[zms[i].row]--;
+				zm_nums[zms[i].row - 1]--;
 			}
 
 			//frame在执行++后等于图片帧数，不做操作则下一次渲染就会数组越界，故置零
@@ -388,12 +430,18 @@ void PutBullet() {
 				putimagePNG(bullets[i].x, bullets[i].y, &bul_img[0]);
 			}
 			else {
-				putimagePNG(bullets[i].x, bullets[i].y, &bul_img[1]);
-				bullet_nums[bullets[i].row - 1]--;
-				bullets[i].x = 0;
-				bullets[i].y = 0;
-				bullets[i].row = 0;
-				bullets[i].dmg = 0;
+				if (bullets[i].boom_timer >= 300) {
+					bullet_nums[bullets[i].row - 1]--;
+					bullets[i].x = 0;
+					bullets[i].y = 0;
+					bullets[i].row = 0;
+					bullets[i].dmg = 0;
+					bullets[i].boom_timer = 0;
+				}
+				else {
+					putimagePNG(bullets[i].x, bullets[i].y, &bul_img[1]);
+					bullets[i].boom_timer++;
+				}
 			}
 		}
 	}
@@ -411,7 +459,6 @@ void pausepage(int* a) {
 	putimagePNG(417, 405, a[1] ? &main_menu2 : &main_menu1);
 	putimagePNG(370, 478, a[2] ? &back_game1 : &back_game2);
 }
-
 
 //游戏窗口
 void UpdateWindow(int* just2, int* just3, int* a) {
@@ -476,6 +523,9 @@ void CatchPlant(ExMessage* msg) {
 void InitPlant(int row, int col, int type) {
 	AllMap[row][col].type = type;
 	AllMap[row][col].frame = 0;
+	AllMap[row][col].timer = 0;
+	AllMap[row][col].state = 0;
+	AllMap[row][col].beingEaten = 0;
 	int p_hp = 0;
 	switch (type - 1)
 	{
@@ -604,7 +654,23 @@ void PlantSwing() {
 		for (int j = 0; j < 9; j++) {
 			int n = AllMap[i][j].type - 1;
 			if (AllMap[i][j].type > 0) {
-				if (AllMap[i][j].frame < CardNums[n] - 1) {
+				if (AllMap[i][j].type -1 == WallNut) {
+					if (AllMap[i][j].frame < NutImgNum[AllMap[i][j].state] - 1) {
+						AllMap[i][j].frame++;
+					}
+					else {
+						AllMap[i][j].frame = 0;
+					}
+				}
+				else if (AllMap[i][j].type - 1 == PotatoMine) {
+					if (AllMap[i][j].frame < PotatoImgNum[AllMap[i][j].state] - 1) {
+						AllMap[i][j].frame++;
+					}
+					else {
+						AllMap[i][j].frame = 0;
+					}
+				}
+				else if (AllMap[i][j].frame < CardNums[n] - 1) {
 					AllMap[i][j].frame++;
 				}
 				else {
@@ -617,7 +683,7 @@ void PlantSwing() {
 
 //向日葵生产阳光
 void SunFlowerSunshine() {
-	static int fre = 100;
+	static int fre = 250;
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 9; j++) {
 			if ((AllMap[i][j].type - 1) == SunFlower) {
@@ -754,9 +820,13 @@ void FiringBullets() {
 
 //创造僵尸
 void createZM() {
-	static int zmFre = 0;//创建僵尸的帧间隔，初始200
+	static int zmFre = 200;//创建僵尸的帧间隔，初始200
 	static int count = 0;//游戏帧计数器
 	if (count++ > zmFre) {//帧计数器大于帧间隔时才创建僵尸，否则无操作
+		if (!zom_birth) {
+			mciSendString("play res/audio/zombiescoming.mp3", 0, 0, 0);
+			zom_birth = true;
+		}
 		count = 0;//帧计数器置零
 		zmFre = rand() % 300 + 200;//帧间隔随机重置
 
@@ -776,9 +846,9 @@ void createZM() {
 			zms[i].dead = 0;
 			switch (zms[i].type)
 			{
-			case 0:zms[i].hp = 20; break;
-			case 1:zms[i].hp = 50; break;
-			default:zms[i].hp = 80;
+			case 0:zms[i].hp = 270; break;
+			case 1:zms[i].hp = 640; break;
+			default:zms[i].hp = 1370;
 				break;
 			}
 		}
@@ -810,7 +880,7 @@ void updateZM() {
 						int X = bullets[j].x + 24;
 						if (X >= leftX && X <= rightX) {//豌豆碰到僵尸
 							bullets[j].used = false;//销毁子弹
-							zms[i].hp--;//僵尸扣血
+							zms[i].hp -= bullets[j].dmg;//僵尸扣血
 							if (zms[i].hp <= 0)
 							{
 								zms[i].dead++;//僵尸倒了，还没死透
@@ -889,7 +959,7 @@ void updateZM() {
 				if (AllMap[i][j].beingEaten)
 					printf("%d %d %d", i, j, AllMap[i][j].beingEaten);
 				{
-					AllMap[i][j].hp -= AllMap[i][j].beingEaten;
+					AllMap[i][j].hp -= AllMap[i][j].beingEaten*5;
 					if (AllMap[i][j].hp <= 0)//被撅死力（悲）
 					{
 						AllMap[i][j].type = 0;
@@ -946,6 +1016,33 @@ void UpdateCard() {
 	}
 }
 
+//更新植物状态
+void UpdatePlantStatu() {
+	static int mine_time = 200;
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 9; j++) {
+			if (AllMap[i][j].type - 1 == WallNut) {
+				if (AllMap[i][j].state != 1 && AllMap[i][j].hp <= 2000) {
+					AllMap[i][j].state = 1;
+					AllMap[i][j].frame = 0;
+				}
+				if (AllMap[i][j].state != 2 && AllMap[i][j].hp <= 1000) {
+					AllMap[i][j].state = 2;
+					AllMap[i][j].frame = 0;
+				}
+			}
+			if (AllMap[i][j].type - 1 == PotatoMine) {
+				if (AllMap[i][j].state == 0 && AllMap[i][j].timer > 200) {
+					AllMap[i][j].state = 1;
+				}
+				else if (AllMap[i][j].state == 0) {
+					AllMap[i][j].timer++;
+				}
+			}
+		}
+	}
+}
+
 //更新游戏内信息
 void UpdateGame() {
 	PlantSwing();
@@ -955,6 +1052,7 @@ void UpdateGame() {
 	UpdateBullet();
 	FiringBullets();
 	UpdateCard();
+	UpdatePlantStatu();
 
 	createZM();//每一帧调用一次的方法创建僵尸
 	updateZM();//每一帧刷新一次僵尸
@@ -972,8 +1070,8 @@ again:
 		bool flag = false;
 		mciSendString("play res/audio/readysetplant.mp3", 0, 0, 0);
 		mciSendString("open res/audio/grasswalk.mp3 alias bg2", 0, 0, 0);
-		//mciSendString("play bg2 repeat", 0, 0, 0);
-		//mciSendString("setaudio bg2 volume to 300", 0, 0, 0);
+		mciSendString("play bg2 repeat", 0, 0, 0);
+		mciSendString("setaudio bg2 volume to 300", 0, 0, 0);
 		while (true) {
 			Click();
 			timer += getDelay();
