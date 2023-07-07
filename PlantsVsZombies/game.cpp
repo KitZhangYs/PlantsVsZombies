@@ -34,7 +34,7 @@ IMAGE imgBg3, back_game1, back_game2, begin_again1, begin_again2, main_menu1, ma
 IMAGE nut_state[3][20];			//坚果墙状态图片
 IMAGE potato_state[3][10];		//土豆雷状态图片
 int NutImgNum[3] = { 0 };		//坚果墙状态图片数量
-int PotatoImgNum[2] = { 0 };	//土豆雷状态图片数量
+int PotatoImgNum[3] = { 0 };	//土豆雷状态图片数量
 int zm_nums[5];					//每行僵尸数量
 int bullet_nums[5];				//每行子弹数量
 bool dis_afford[CardCount];		//是否买得起该植物
