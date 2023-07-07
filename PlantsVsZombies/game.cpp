@@ -33,6 +33,7 @@ IMAGE imgBg2, imgMENU1, imgMENU2, imgMENU_exit1, imgMENU_exit2;
 IMAGE imgBg3, back_game1, back_game2, begin_again1, begin_again2, main_menu1, main_menu2;
 IMAGE nut_state[3][20];			//坚果墙状态图片
 IMAGE potato_state[3][10];		//土豆雷状态图片
+IMAGE win,fail;						//获胜、失败图片
 int NutImgNum[3] = { 0 };		//坚果墙状态图片数量
 int PotatoImgNum[3] = { 0 };	//土豆雷状态图片数量
 int zm_nums[5];					//每行僵尸数量
@@ -42,6 +43,8 @@ int cd[CardCount];				//卡牌CD
 int plant_value[CardCount] = { 100,50,50,25 };		//植物价格
 int cd_num[CardCount] = { 200,200,200,200 };		//植物cd
 bool zom_birth;					//是否开始生成僵尸
+int zm_dead_num = 0;			//僵尸死亡数量
+bool Win, Fail;
 
 //植物
 struct plant {
@@ -127,6 +130,9 @@ void InitData() {
 	judgePlant = false;
 	judgeShovel = false;
 	zom_birth = false;
+	Win = false;
+	Fail = false;
+	zm_dead_num = 0;
 	//随机种子
 	srand(time(NULL));
 }
@@ -149,6 +155,9 @@ void InitGame() {
 		loadimage(&grey_card_img[i], name);
 		sprintf_s(name, sizeof(name), "res/Cards_CD/card_%d.png", i + 1);
 		loadimage(&cd_card_img[i], name);
+
+		loadimage(&win, "res/win.png");
+		loadimage(&fail, "res/fail.png");
 
 		for (int j = 0; j < 20; j++) {
 			sprintf_s(name, sizeof(name), "res/Plants/%d/%d.png", i, j + 1);
@@ -595,6 +604,7 @@ void UseShovel(ExMessage* msg) {
 	judgeShovel = true;
 	curX = msg->x;
 	curY = msg->y;
+	mciSendString("play res/audio/shovel.mp3", 0, 0, 0);
 }
 
 //铲除植物
@@ -646,6 +656,7 @@ void Click() {
 		else if (msg.message == WM_RBUTTONDOWN) {
 			judgePlant = false;
 			judgeShovel = false;
+			mciSendString("play res/audio/selectCancel.mp3", 0, 0, 0);
 		}
 		menu(&just2, &just3 , msg);
 	}
@@ -857,7 +868,6 @@ void createZM() {
 		}
 
 	}
-
 }
 
 //更新僵尸位置和状态
@@ -884,6 +894,21 @@ void updateZM() {
 						if (X >= leftX && X <= rightX) {//豌豆碰到僵尸
 							bullets[j].used = false;//销毁子弹
 							zms[i].hp -= bullets[j].dmg;//僵尸扣血
+							char name[64];
+							switch(zms[i].type) {
+							case 0:
+								sprintf_s(name, 64, "res/audio/peacrush%d.wav", rand() % 3 + 1);
+								PlaySound(name, NULL, SND_FILENAME | SND_ASYNC);
+								break;
+							case 1:
+								sprintf_s(name, 64, "res/audio/peaToRoadCone%d.wav", rand() % 2 + 1);
+								PlaySound(name, NULL, SND_FILENAME | SND_ASYNC);
+								break;
+							case 2:
+								sprintf_s(name, 64, "res/audio/peaToBucket%d.wav", rand() % 2 + 1);
+								PlaySound(name, NULL, SND_FILENAME | SND_ASYNC);
+								break;
+							}
 							if (zms[i].hp <= 0)
 							{
 								zms[i].dead++;//僵尸倒了，还没死透
@@ -930,12 +955,12 @@ void updateZM() {
 					if (zms[i].x <= (curX00 - 20))
 					{
 						//游戏失败
-						MessageBox(NULL, "over", "over", 0);
-						exit(0);
+						Fail = true;
 					}
 				}
 				else
 				{
+					mciSendString("play res/audio/zmeat.mp3", 0, 0, 0);
 					//在吃饭就判断有没有吃完
 					for (int t = 0; t < 9; t++) {
 						if (AllMap[zms[i].row - 1][t].type == 0) {//遍历判断该行每一个格子有无植物
@@ -965,6 +990,7 @@ void updateZM() {
 					AllMap[i][j].hp -= AllMap[i][j].beingEaten*5;
 					if (AllMap[i][j].hp <= 0)//被撅死力（悲）
 					{
+						mciSendString("play res/audio/plantDead.mp3", 0, 0, 0);
 						AllMap[i][j].type = 0;
 						AllMap[i][j].beingEaten = 0;
 						AllMap[i][j].frame = 0;
@@ -1064,6 +1090,7 @@ void PotatoBomb() {
 					AllMap[i][j].state = 2;
 					AllMap[i][j].frame = 0;
 					AllMap[i][j].timer = 200;
+					mciSendString("play res/audio/potato_mine.mp3", 0, 0, 0);
 				}
 				//如果土豆雷已经爆炸了则继续计时
 				else if (AllMap[i][j].state == 2) {
@@ -1105,7 +1132,6 @@ again:
 	if (just == 1) {
 		mciSendString("close bg", 0, 0, 0);
 		bool flag = false;
-		mciSendString("play res/audio/readysetplant.mp3", 0, 0, 0);
 		mciSendString("open res/audio/grasswalk.mp3 alias bg2", 0, 0, 0);
 		mciSendString("play bg2 repeat", 0, 0, 0);
 		mciSendString("setaudio bg2 volume to 300", 0, 0, 0);
@@ -1126,6 +1152,7 @@ again:
 				}
 				else if (just4 == 2) {
 					InitData();
+					mciSendString("close bg2", 0, 0, 0);
 					goto start;
 
 				}
@@ -1137,6 +1164,24 @@ again:
 			if (flag && just2 == 0) {
 				flag = false;
 				UpdateGame();
+			}
+
+			if (zm_dead_num == zmNum) {
+				mciSendString("close bg2", 0, 0, 0);
+				mciSendString("play res/audio/win.mp3", 0, 0, 0);
+				putimagePNG(300, 100, &win);
+				Sleep(5000);
+				InitData();
+				goto start;
+			}
+
+			if (Fail) {
+				mciSendString("close bg2", 0, 0, 0);
+				mciSendString("play res/audio/lose.mp3",0, 0, 0);
+				putimagePNG(300, 100, &fail);
+				Sleep(5000);
+				InitData();
+				goto start;
 			}
 		}
 
